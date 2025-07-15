@@ -28,6 +28,11 @@ public class PageBasedNodeManager implements NodeManager {
     }
 
     @Override
+    public void freeNode(long nodeId) {
+
+    }
+
+    @Override
     public void close() {
 
     }

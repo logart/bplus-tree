@@ -4,7 +4,9 @@ import org.logart.node.BTreeNode;
 import org.logart.node.NodeManager;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class DefaultBPlusTree implements BPlusTree {
@@ -33,10 +35,12 @@ public class DefaultBPlusTree implements BPlusTree {
     public void put(byte[] key, byte[] value) {
         boolean rootUpdated;
         BTreeNode newRoot;
+        BTreeNode currentRoot;
+        SplitResult splitResult;
         do {
             Versioned<BTreeNode> currentVersionedRoot = root.get();
-            BTreeNode currentRoot = currentVersionedRoot.get();
-            SplitResult splitResult = put(currentRoot, key, value);
+            currentRoot = currentVersionedRoot.get();
+            splitResult = put(currentRoot, key, value);
 
 //             in case root was updated, but there is no split
             newRoot = splitResult.nodeCopy();
@@ -47,27 +51,37 @@ public class DefaultBPlusTree implements BPlusTree {
             rootUpdated = root.compareAndSet(currentVersionedRoot, new Versioned<>(newRoot, currentVersionedRoot.version() + 1));
 //             if root is already different, we have to retry
         } while (!rootUpdated);
+        nodeManager.freeNode(currentRoot.id());
+        for (long oldNodeId : splitResult.oldNodes()) {
+            nodeManager.freeNode(oldNodeId);
+        }
         nodeManager.writeNode(newRoot.id(), newRoot);
     }
 
     private SplitResult put(BTreeNode node, byte[] key, byte[] value) {
+        Set<Long> oldNodes = new HashSet<>();
         BTreeNode nodeCopy;
         if (node.isLeaf()) {
             nodeCopy = nodeManager.allocateLeafNode();
             nodeCopy.copy(node);
             nodeCopy.put(key, value);
+            oldNodes.add(node.id());
         } else {
             long childId = node.findChild(key);
             BTreeNode child = nodeManager.readNode(childId);
 
             assert (child != null) : "Node with id: " + childId + " was null. Node: " + node + ", key: " + new String(key);
             SplitResult splitResult = put(child, key, value);
+            oldNodes.addAll(splitResult.oldNodes());
             BTreeNode childCopy = splitResult.nodeCopy();
 
             nodeCopy = nodeManager.allocateNode();
+            // 994
             nodeCopy.copy(node);
+            oldNodes.add(node.id());
             if (childCopy != null) {
                 nodeCopy.replaceChild(childId, childCopy.id());
+                oldNodes.add(childId);
             }
 
             if (splitResult.promotedKey() != null) {
@@ -75,6 +89,7 @@ public class DefaultBPlusTree implements BPlusTree {
                 nodeCopy = nodeManager.allocateNode();
                 nodeCopy.copy(node);
                 nodeCopy.addChildren(splitResult.promotedKey(), splitResult.left().id(), splitResult.right().id());
+                oldNodes.add(node.id());
             }
         }
         if (nodeCopy.isFull()) {
@@ -83,7 +98,7 @@ public class DefaultBPlusTree implements BPlusTree {
             return split(nodeCopy);
         }
 
-        return new SplitResult(nodeCopy, null, null, null);
+        return new SplitResult(nodeCopy, null, null, null, oldNodes);
     }
 
     private SplitResult split(BTreeNode node) {
@@ -101,7 +116,7 @@ public class DefaultBPlusTree implements BPlusTree {
                 right.put(data[0], data[1]);
             }
 
-            return new SplitResult(null, right.get(0)[0], left, right);
+            return new SplitResult(null, right.get(0)[0], left, right, Collections.singleton(node.id()));
         } else {
             byte[] promotedKey = node.get(mid)[0];
             BTreeNode left = nodeManager.allocateNode();
@@ -110,7 +125,7 @@ public class DefaultBPlusTree implements BPlusTree {
             BTreeNode right = nodeManager.allocateNode();
             right.copyChildren(node, mid, node.numKeys());
 
-            return new SplitResult(null, promotedKey, left, right);
+            return new SplitResult(null, promotedKey, left, right, Collections.singleton(node.id()));
         }
     }
 
@@ -164,5 +179,27 @@ public class DefaultBPlusTree implements BPlusTree {
     @Override
     public String toString() {
         return printStructure();
+    }
+
+    public Set<Long> collectReachablePageIds() {
+        return new HashSet<>(collectRecursive(root.get().get()));
+    }
+
+    private Set<Long> collectRecursive(BTreeNode node) {
+        Set<Long> visited = new HashSet<>();
+
+        if (!node.isLeaf()) {
+            for (long childId : node.childrenDebugTODOREMOVE()) {
+                if (childId != -1) {
+                    visited.add(childId);
+                    BTreeNode child = nodeManager.readNode(childId);
+                    if (child == null) {
+                        throw new IllegalStateException("Child node with id " + childId + " is reachable from node " + node.id() + " but is deallocated.");
+                    }
+                    visited.addAll(collectRecursive(child));
+                }
+            }
+        }
+        return visited;
     }
 }
