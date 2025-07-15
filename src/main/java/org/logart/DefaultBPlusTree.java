@@ -88,12 +88,12 @@ public class DefaultBPlusTree implements BPlusTree {
         BTreeNode node = nodeManager.readNode(pageId);
 
         int idx = 0;
-        while (idx < node.numKeys() && comparator.compare(key, node.key(idx)) > 0) {
+        while (idx < node.numKeys() && comparator.compare(key, node.get(idx)[0]) > 0) {
             idx++;
         }
 
         if (node.isLeaf()) {
-            if (idx < node.numKeys() && comparator.compare(key, node.key(idx)) == 0) {
+            if (idx < node.numKeys() && comparator.compare(key, node.get(idx)[0]) == 0) {
                 return ((PersistentBTreeNode) node).loadValue(idx);
             } else {
                 return null;

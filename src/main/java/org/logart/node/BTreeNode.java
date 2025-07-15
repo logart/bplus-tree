@@ -3,8 +3,6 @@ package org.logart.node;
 public interface BTreeNode {
     long id();
 
-    long parent();
-
     void put(byte[] key, byte[] value);
 
     byte[] get(byte[] key);
@@ -12,8 +10,6 @@ public interface BTreeNode {
     byte[][] get(int idx);
 
     void remove(int start, int end);
-
-    boolean hasParent();
 
     boolean isFull();
 
@@ -25,13 +21,5 @@ public interface BTreeNode {
 
     int numKeys();
 
-    int keyIdx(byte[] key);
-
-    byte[] key(int idx);
-
-    void key(int idx, byte[] key);
-
     boolean isLeaf();
-
-    long[] childrenDebugTODOREMOVE();
 }

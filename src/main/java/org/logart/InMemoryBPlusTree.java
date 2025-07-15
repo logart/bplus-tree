@@ -66,7 +66,7 @@ public class InMemoryBPlusTree implements BPlusTree {
     private SplitResult split(BTreeNode node) {
         int mid = (node.numKeys() + 1) / 2;
         if (node.isLeaf()) {
-            BTreeNode right = nodeManager.allocateLeafNode(node.parent());
+            BTreeNode right = nodeManager.allocateLeafNode();
 
             for (int i = mid; i < node.numKeys(); i++) {
                 byte[][] data = node.get(i);
@@ -79,9 +79,9 @@ public class InMemoryBPlusTree implements BPlusTree {
 //            right.next = this.next;
 //            this.next = right;
 
-            return new SplitResult(right.key(0), node, right);
+            return new SplitResult(right.get(0)[0], node, right);
         } else {
-            byte[] promotedKey = node.key(mid);
+            byte[] promotedKey = node.get(mid)[0];
 
             BTreeNode right = nodeManager.allocateNode();
             right.copyChildren(node, mid, node.numKeys());

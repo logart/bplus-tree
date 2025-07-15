@@ -14,18 +14,8 @@ public class PageBasedNodeManager implements NodeManager {
         return new PersistentBTreeNode(pageManager.allocatePage());
     }
 
-    @Override
-    public BTreeNode allocateNode(long parentId) {
-        return null;
-    }
-
     public BTreeNode allocateLeafNode() {
         return new PersistentBTreeNode(pageManager.allocateLeafPage());
-    }
-
-    @Override
-    public BTreeNode allocateLeafNode(long parentId) {
-        return null;
     }
 
     public BTreeNode readNode(long nodeId) {

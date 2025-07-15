@@ -20,9 +20,8 @@ public class InMemoryBTreeNode implements BTreeNode {
 
     private final boolean leaf;
 
-    public InMemoryBTreeNode(long id, long parent, boolean leaf) {
+    public InMemoryBTreeNode(long id, boolean leaf) {
         this.id = id;
-        this.parent = parent;
         this.keys = new byte[PAGE_SIZE][];
         this.values = new byte[PAGE_SIZE][];
         this.children = new long[PAGE_SIZE + 1]; // children should have +1 because the first key should have left children reference
@@ -33,11 +32,6 @@ public class InMemoryBTreeNode implements BTreeNode {
     @Override
     public long id() {
         return id;
-    }
-
-    @Override
-    public long parent() {
-        return parent;
     }
 
     @Override
@@ -79,11 +73,6 @@ public class InMemoryBTreeNode implements BTreeNode {
         Arrays.fill(children, start + 1, end + 1, -1);
         Arrays.fill(values, start, end, null);
         numKeys -= (end - start);
-    }
-
-    @Override
-    public boolean hasParent() {
-        return parent != -1;
     }
 
     @Override
@@ -148,47 +137,8 @@ public class InMemoryBTreeNode implements BTreeNode {
     }
 
     @Override
-    public int keyIdx(byte[] key) {
-        return 0;
-    }
-
-    @Override
-    public byte[] key(int idx) {
-        return keys[idx];
-    }
-
-    @Override
-    public void key(int idx, byte[] key) {
-        keys[idx] = key;
-        numKeys++;
-    }
-
-    @Override
     public boolean isLeaf() {
         return leaf;
-    }
-
-    @Override
-    public long[] childrenDebugTODOREMOVE() {
-        return children;
-    }
-
-    private static class Data {
-        private final byte[] key;
-        private final byte[] value;
-
-        public Data(byte[] key, byte[] value) {
-            this.key = key;
-            this.value = value;
-        }
-
-        @Override
-        public String toString() {
-            return "Data{" +
-                    "key=" + new String(key) +
-                    ", value=" + new String(value) +
-                    '}';
-        }
     }
 
     @Override

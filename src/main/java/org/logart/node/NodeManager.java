@@ -3,11 +3,7 @@ package org.logart.node;
 public interface NodeManager {
     BTreeNode allocateNode();
 
-    BTreeNode allocateNode(long parentId);
-
     BTreeNode allocateLeafNode();
-
-    BTreeNode allocateLeafNode(long parentId);
 
     BTreeNode readNode(long nodeId);
 

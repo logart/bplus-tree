@@ -23,16 +23,10 @@ public class PersistentBTreeNode implements BTreeNode {
     }
 
     @Override
-    public long parent() {
-        return 0;
-    }
-
-    @Override
     public void put(byte[] key, byte[] value) {
         page.put(key, value);
     }
 
-    @Override
     public byte[] get(byte[] key) {
         // todo
         return page.getEntry(0)[1];
@@ -46,11 +40,6 @@ public class PersistentBTreeNode implements BTreeNode {
     @Override
     public void remove(int start, int end) {
 
-    }
-
-    @Override
-    public boolean hasParent() {
-        return false;
     }
 
     @Override
@@ -79,28 +68,8 @@ public class PersistentBTreeNode implements BTreeNode {
     }
 
     @Override
-    public int keyIdx(byte[] key) {
-        return 0;
-    }
-
-    @Override
-    public byte[] key(int idx) {
-        return new byte[0];
-    }
-
-    @Override
-    public void key(int idx, byte[] key) {
-
-    }
-
-    @Override
     public boolean isLeaf() {
         return false;
-    }
-
-    @Override
-    public long[] childrenDebugTODOREMOVE() {
-        return new long[0];
     }
 
     public byte[] loadValue(int idx) {

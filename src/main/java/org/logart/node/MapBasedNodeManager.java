@@ -8,27 +8,17 @@ public class MapBasedNodeManager implements NodeManager {
     private final Map<Long, BTreeNode> nodes = new HashMap<>();
 
     @Override
-    public BTreeNode allocateNode(long parentId) {
-        return allocateNode(parentId, false);
-    }
-
-    @Override
     public BTreeNode allocateNode() {
-        return allocateNode(-1);
+        return allocateNode(false);
     }
 
     @Override
     public BTreeNode allocateLeafNode() {
-        return allocateNode(-1, true);
+        return allocateNode(true);
     }
 
-    @Override
-    public BTreeNode allocateLeafNode(long parentId) {
-        return allocateNode(parentId, true);
-    }
-
-    private BTreeNode allocateNode(long parentId, boolean leaf) {
-        InMemoryBTreeNode result = new InMemoryBTreeNode(nextId, parentId, leaf);
+    private BTreeNode allocateNode(boolean leaf) {
+        InMemoryBTreeNode result = new InMemoryBTreeNode(nextId, leaf);
         nextId++;
         nodes.put(result.id(), result);
         return result;
