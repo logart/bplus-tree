@@ -9,13 +9,11 @@ public class InMemoryBTreeNode implements BTreeNode {
     // this should produce more splits that are good for testing
     private static final int PAGE_SIZE = 3;
 
-    private long id;
-    private long parent;
+    private final long id;
     private byte[][] keys;
     private byte[][] values;
     private long[] children;
 
-    private int nextFreeSlot = 0;
     private int numKeys = 0;
 
     private final boolean leaf;
@@ -98,16 +96,22 @@ public class InMemoryBTreeNode implements BTreeNode {
     @Override
     public void addChildren(byte[] key, long leftPageId, long rightPageId) {
         int idx = searchKeyIdx(key);
-        try {
-            System.arraycopy(keys, idx, keys, idx + 1, numKeys - idx);
-            System.arraycopy(children, idx, children, idx + 1, numKeys - idx + 1);
-        } catch (ArrayIndexOutOfBoundsException e) {
-            System.out.println("ArrayIndexOutOfBoundsException");
-        }
+        System.arraycopy(keys, idx, keys, idx + 1, numKeys - idx);
+        System.arraycopy(children, idx, children, idx + 1, numKeys - idx + 1);
         keys[idx] = key;
         children[idx] = leftPageId;
         children[idx + 1] = rightPageId;
         numKeys++;
+    }
+
+    @Override
+    public void replaceChild(long childId, long newId) {
+        for (int i = 0; i < children.length; i++) {
+            if (children[i] == childId) {
+                children[i] = newId;
+                return;
+            }
+        }
     }
 
     @Override
@@ -142,12 +146,23 @@ public class InMemoryBTreeNode implements BTreeNode {
     }
 
     @Override
+    public void copy(BTreeNode node) {
+        this.numKeys = node.numKeys();
+        this.keys = Arrays.copyOf(((InMemoryBTreeNode) node).keys, PAGE_SIZE);
+        this.values = Arrays.copyOf(((InMemoryBTreeNode) node).values, PAGE_SIZE);
+        this.children = Arrays.copyOf(((InMemoryBTreeNode) node).children, PAGE_SIZE + 1);
+    }
+
+    @Override
+    public long[] childrenDebugTODOREMOVE() {
+        return children;
+    }
+
+    @Override
     public String toString() {
         return "InMemoryBTreeNode{" +
                 "id=" + id +
-                ", parent=" + parent +
                 ", data=" + dataToString() +
-                ", nextFreeSlot=" + nextFreeSlot +
                 '}';
     }
 

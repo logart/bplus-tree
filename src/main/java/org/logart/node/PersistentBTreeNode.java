@@ -58,6 +58,11 @@ public class PersistentBTreeNode implements BTreeNode {
     }
 
     @Override
+    public void replaceChild(long childId, long newId) {
+
+    }
+
+    @Override
     public long findChild(byte[] key) {
         return 0;
     }
@@ -70,6 +75,16 @@ public class PersistentBTreeNode implements BTreeNode {
     @Override
     public boolean isLeaf() {
         return false;
+    }
+
+    @Override
+    public void copy(BTreeNode node) {
+
+    }
+
+    @Override
+    public long[] childrenDebugTODOREMOVE() {
+        return new long[0];
     }
 
     public byte[] loadValue(int idx) {

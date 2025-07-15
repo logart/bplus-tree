@@ -14,7 +14,7 @@ public class InMemoryBPlusTreeTest {
 
     @BeforeEach
     void setUp() {
-        tree = new InMemoryBPlusTree(new MapBasedNodeManager());
+        tree = new DefaultBPlusTree(new MapBasedNodeManager());
     }
 
     @Test

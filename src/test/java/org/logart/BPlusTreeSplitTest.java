@@ -13,7 +13,7 @@ public class BPlusTreeSplitTest {
 
     @BeforeEach
     void setUp() {
-        tree = new InMemoryBPlusTree(new MapBasedNodeManager());
+        tree = new DefaultBPlusTree(new MapBasedNodeManager());
     }
 
     @Test
@@ -39,7 +39,7 @@ public class BPlusTreeSplitTest {
         assertNull(tree.get("50".getBytes()));
 
         // Optional: visualize
-        System.out.println(((InMemoryBPlusTree) tree).printStructure());
+        System.out.println(((DefaultBPlusTree) tree).printStructure());
     }
 
     @Test
@@ -47,7 +47,7 @@ public class BPlusTreeSplitTest {
         for (int i = 10; i <= 100; i += 10) {
             tree.put(String.valueOf(i).getBytes(), ("V" + i).getBytes());
             System.out.println("Added: " + i);
-            System.out.println(((InMemoryBPlusTree) tree).printStructure());
+            System.out.println(((DefaultBPlusTree) tree).printStructure());
         }
 
         // Root should have children now
@@ -55,7 +55,7 @@ public class BPlusTreeSplitTest {
             assertArrayEquals(("V" + i).getBytes(), tree.get(String.valueOf(i).getBytes()));
         }
 
-        System.out.println(((InMemoryBPlusTree) tree).printStructure());
+        System.out.println(((DefaultBPlusTree) tree).printStructure());
     }
 
     @Test
@@ -64,6 +64,8 @@ public class BPlusTreeSplitTest {
 
         for (int k : keys) {
             tree.put(String.valueOf(k).getBytes(), ("Val" + k).getBytes());
+            System.out.println("Added: " + k);
+            System.out.println(((DefaultBPlusTree) tree).printStructure());
         }
 
         for (int k : keys) {
@@ -73,7 +75,7 @@ public class BPlusTreeSplitTest {
         // Check the tree still valid
         assertNull(tree.get(String.valueOf(999).getBytes()));
 
-        System.out.println(((InMemoryBPlusTree) tree).printStructure());
+        System.out.println(((DefaultBPlusTree) tree).printStructure());
     }
 
     @Test

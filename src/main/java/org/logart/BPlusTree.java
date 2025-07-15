@@ -9,4 +9,6 @@ public interface BPlusTree {
     void put(byte[] key, byte[] value);
 
     List<byte[]> getAllKeysInOrder();
+
+    void close();
 }

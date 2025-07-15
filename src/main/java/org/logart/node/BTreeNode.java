@@ -17,9 +17,15 @@ public interface BTreeNode {
 
     void addChildren(byte[] key, long leftPageId, long rightPageId);
 
+    void replaceChild(long childId, long newId);
+
     long findChild(byte[] key);
 
     int numKeys();
 
     boolean isLeaf();
+
+    void copy(BTreeNode node);
+
+    long[] childrenDebugTODOREMOVE();
 }
