@@ -1,29 +1,22 @@
 package org.logart.page;
 
-import org.logart.page.Page;
+import org.logart.ConcurrentLinkedUniqueQueue;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.Objects;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class MMAPBasedPageManager implements PageManager {
-    // todo could be replaced with primitive map implementation,
-    // I don't want to do it here to speed up the development and not deal with third-party libraries.
-    private final ConcurrentMap<Long, ReentrantReadWriteLock> pageLocks = new ConcurrentHashMap<>();
-
     private final FileChannel channel;
     private final int pageSize;
-    private final Queue<Long> freePagesIds = new ConcurrentLinkedQueue<>();
+    private final Queue<Long> freePagesIds = new ConcurrentLinkedUniqueQueue<>();
     private final AtomicLong currentPageId;
 
     public MMAPBasedPageManager(File file, int pageSize) throws IOException {
@@ -42,7 +35,18 @@ public class MMAPBasedPageManager implements PageManager {
      * Returns the page id (page offset / pageSize).
      */
     public Page allocatePage() {
-        return allocatePage(false);
+        Long potentialPageId = freePagesIds.poll();
+        final long pageId = Objects.requireNonNullElseGet(potentialPageId, currentPageId::getAndIncrement);
+
+        ByteBuffer emptyPage;
+        try {
+            emptyPage = channel.map(FileChannel.MapMode.READ_WRITE, pageId * pageSize, pageSize);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        Page page = InternalPage.newPage(pageId, emptyPage);
+        writePage(pageId, page);
+        return page;
     }
 
     /**
@@ -52,19 +56,14 @@ public class MMAPBasedPageManager implements PageManager {
     public Page allocateLeafPage() {
         Long potentialPageId = freePagesIds.poll();
         final long pageId = Objects.requireNonNullElseGet(potentialPageId, currentPageId::getAndIncrement);
-        // todo get buffer from mmaped file
-        ByteBuffer emptyPage = ByteBuffer.allocate(pageSize);
-        Page page = LeafPage.newPage(pageId, emptyPage);
-        writePage(pageId, page);
-        return page;
-    }
 
-    private Page allocatePage(boolean leaf) {
-        Long potentialPageId = freePagesIds.poll();
-        final long pageId = Objects.requireNonNullElseGet(potentialPageId, currentPageId::getAndIncrement);
-        // todo get buffer from mmaped file
-        ByteBuffer emptyPage = ByteBuffer.allocate(pageSize);
-        Page page = InternalPage.newPage(pageId, emptyPage);
+        ByteBuffer emptyPage;
+        try {
+            emptyPage = channel.map(FileChannel.MapMode.READ_WRITE, pageId * pageSize, pageSize);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        Page page = LeafPage.newPage(pageId, emptyPage);
         writePage(pageId, page);
         return page;
     }
@@ -73,51 +72,33 @@ public class MMAPBasedPageManager implements PageManager {
      * Reads a full page into a ByteBuffer.
      */
     public Page readPage(long pageId) {
-        ReentrantReadWriteLock lock = pageLocks.computeIfAbsent(pageId, unused -> new ReentrantReadWriteLock());
-        lock.readLock().lock();
+        MappedByteBuffer buffer;
         try {
-            ByteBuffer buffer = ByteBuffer.allocate(pageSize);
-            try {
-                int read = channel.read(buffer, pageId * pageSize);
-                if (read != pageSize) {
-                    // todo do a better type
-                    throw new UncheckedIOException(new IOException("Failed to read full page " + pageId + ", only read " + read + " bytes from page " + pageSize));
-                }
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-            buffer.flip();
-            return PageFactory.read(buffer);
-        } finally {
-            lock.readLock().unlock();
+            buffer = channel.map(FileChannel.MapMode.READ_WRITE, pageId * pageSize, pageSize);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
+        return PageFactory.read(buffer);
     }
 
     /**
      * Writes a full page from a ByteBuffer.
      */
     public void writePage(long pageId, Page page) {
-        ReentrantReadWriteLock lock = pageLocks.computeIfAbsent(pageId, unused -> new ReentrantReadWriteLock());
-        lock.writeLock().lock();
-        try {
-            // todo maybe we could just do force() on underlying mmap buffer
-            ByteBuffer buffer = page.buffer();
-            if (buffer.position() != 0) {
-                buffer.rewind();
-            }
-            int remaining = buffer.remaining();
-            if (remaining != pageSize) {
-                throw new IllegalArgumentException("Buffer size " + remaining + " does not match page size " + pageSize);
-            }
-            writePage(pageId * pageSize, buffer);
-        } finally {
-            lock.writeLock().unlock();
+        // todo maybe we could just do force() on underlying mmap buffer
+        ByteBuffer buffer = page.buffer();
+        if (buffer.position() != 0) {
+            buffer.rewind();
         }
+        int remaining = buffer.remaining();
+        if (remaining != pageSize) {
+            throw new IllegalArgumentException("Buffer size " + remaining + " does not match page size " + pageSize);
+        }
+        ((MappedByteBuffer) buffer).force();
     }
 
     @Override
     public void freePage(long pageId) {
-        pageLocks.remove(pageId);
         freePagesIds.offer(pageId);
     }
 
