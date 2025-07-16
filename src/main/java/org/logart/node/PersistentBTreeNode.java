@@ -1,20 +1,20 @@
 package org.logart.node;
 
-import org.logart.Page;
+import org.logart.page.Page;
 
 public class PersistentBTreeNode implements BTreeNode {
     private final Page page;
     public boolean isLeaf;
     public int numKeys;
 
-    public byte[][] keys;
+    private byte[][] keys;
+    private byte[][] values;
     public long[] children; // Only if !isLeaf
 
     public PersistentBTreeNode(Page page) {
         this.page = page;
         this.isLeaf = page.isLeaf();
         this.numKeys = page.getEntryCount();
-        this.keys = page.loadKeys();
     }
 
     @Override
@@ -28,18 +28,16 @@ public class PersistentBTreeNode implements BTreeNode {
     }
 
     public byte[] get(byte[] key) {
-        // todo
-        return page.getEntry(0)[1];
+        byte[][] entry = page.getEntry(key);
+        if (entry == null) {
+            return null; // Key not found
+        }
+        return entry[1];
     }
 
     @Override
     public byte[][] get(int idx) {
-        return new byte[0][];
-    }
-
-    @Override
-    public void remove(int start, int end) {
-
+        return page.getEntry(idx);
     }
 
     @Override
@@ -64,32 +62,27 @@ public class PersistentBTreeNode implements BTreeNode {
 
     @Override
     public long findChild(byte[] key) {
-        return 0;
+        return page.getChild(key);
     }
 
     @Override
     public int numKeys() {
-        return 0;
+        return page.getEntryCount();
     }
 
     @Override
     public boolean isLeaf() {
-        return false;
+        return page.isLeaf();
     }
 
     @Override
     public void copy(BTreeNode node) {
-
+        this.page.copy(((PersistentBTreeNode) node).page());
     }
 
     @Override
     public long[] childrenDebugTODOREMOVE() {
         return new long[0];
-    }
-
-    public byte[] loadValue(int idx) {
-        // this could be optimized or cached
-        return page.getEntry(idx)[1];
     }
 
     public Page page() {

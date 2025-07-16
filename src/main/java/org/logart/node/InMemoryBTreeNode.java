@@ -66,14 +66,6 @@ public class InMemoryBTreeNode implements BTreeNode {
     }
 
     @Override
-    public void remove(int start, int end) {
-        Arrays.fill(keys, start, end, null);
-        Arrays.fill(children, start + 1, end + 1, -1);
-        Arrays.fill(values, start, end, null);
-        numKeys -= (end - start);
-    }
-
-    @Override
     public boolean isFull() {
         // we can cache this value, but again for speed and simplicity it does not matter for in-memory implementation
         return numKeys == PAGE_SIZE;

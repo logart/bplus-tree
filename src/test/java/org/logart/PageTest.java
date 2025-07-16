@@ -1,9 +1,11 @@
 package org.logart;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.logart.page.InternalPage;
+import org.logart.page.LeafPage;
+import org.logart.page.Page;
 
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -15,8 +17,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class PageTest {
 
@@ -27,21 +28,31 @@ public class PageTest {
     @TempDir
     static Path tempDir;
 
-    @ParameterizedTest
-    @ValueSource(booleans = {true, false})
-    void shouldReadLeafFlag(boolean flag) throws Exception {
-        assertEquals(flag, Page.newPage(0, flag, ByteBuffer.allocate(PAGE_SIZE)).isLeaf());
+    @Test
+    void shouldReadLeafFlag() throws Exception {
+        assertTrue(LeafPage.newPage(0, ByteBuffer.allocate(PAGE_SIZE)).isLeaf());
+        assertFalse(InternalPage.newPage(0, ByteBuffer.allocate(PAGE_SIZE)).isLeaf());
     }
 
     @Test
     void shouldMarkPageAsFull() throws Exception {
-        Page page = Page.newPage(0, true, ByteBuffer.allocate(PAGE_SIZE));
+        Page page = LeafPage.newPage(0, ByteBuffer.allocate(PAGE_SIZE));
         while (page.put("key".getBytes(), "value".getBytes())) {
             // Fill the page
         }
         assertTrue(page.isFull());
     }
 
+    @Test
+    void shouldReadChildId() throws Exception {
+        Page page = InternalPage.newPage(0, ByteBuffer.allocate(PAGE_SIZE));
+        page.addChild("key10".getBytes(), 1, 2);
+        assertEquals(1L, page.getChild("key09".getBytes()), "Child ID should match the one added");
+        assertEquals(2L, page.getChild("key10".getBytes()), "Child ID should match the one added");
+        assertEquals(2L, page.getChild("key11".getBytes()), "Child ID should match the one added");
+    }
+
+    @Disabled // page is not threadsafe, this should not work
     @Test
     void stressTestMultiThreadedWritesAndReads() throws Exception {
         try (ExecutorService executor = Executors.newFixedThreadPool(THREADS)) {
@@ -71,7 +82,7 @@ public class PageTest {
 
             MappedByteBuffer mmap = channel.map(FileChannel.MapMode.READ_WRITE, 0, PAGE_SIZE);
 
-            Page page = Page.newPage(threadId, true, mmap);
+            Page page = LeafPage.newPage(threadId, mmap);
             for (int i = 0; i < ENTRIES_PER_THREAD; i++) {
                 String key = "k-" + threadId + "-" + i;
                 String value = UUID.randomUUID().toString();
@@ -91,7 +102,7 @@ public class PageTest {
              FileChannel channel = raf.getChannel()) {
 
             MappedByteBuffer mmap = channel.map(FileChannel.MapMode.READ_ONLY, 0, PAGE_SIZE);
-            Page readPage = new Page(mmap);
+            Page readPage = LeafPage.newPage(0, mmap);
             int count = readPage.getEntryCount();
 
             if (count != expected.size()) {

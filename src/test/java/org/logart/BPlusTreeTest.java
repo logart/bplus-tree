@@ -2,7 +2,6 @@ package org.logart;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.logart.node.PageBasedNodeManager;
 import org.logart.page.MMAPBasedPageManager;
@@ -19,7 +18,6 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@Disabled // disk implementation is not ready yet
 public class BPlusTreeTest {
 
     private BPlusTree tree;
@@ -49,6 +47,9 @@ public class BPlusTreeTest {
     void testInsertMultipleAndGetCorrectValues() {
         for (int i = 0; i < 100; i++) {
             tree.put(("key" + i).getBytes(), ("value" + i).getBytes());
+            System.out.println(((DefaultBPlusTree)tree).printStructure());
+            assertArrayEquals(("value" + i).getBytes(), tree.get(("key" + i).getBytes()),
+                    "Value for key" + i + " should match");
         }
         for (int i = 0; i < 100; i++) {
             assertArrayEquals(("value" + i).getBytes(), tree.get(("key" + i).getBytes()),

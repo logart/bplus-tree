@@ -1,6 +1,6 @@
 package org.logart.page;
 
-import org.logart.Page;
+import org.logart.page.Page;
 
 import java.io.File;
 import java.io.IOException;
@@ -8,6 +8,7 @@ import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -22,7 +23,7 @@ public class MMAPBasedPageManager implements PageManager {
 
     private final FileChannel channel;
     private final int pageSize;
-    private final Queue<Page> freePages = new ConcurrentLinkedQueue<>();
+    private final Queue<Long> freePagesIds = new ConcurrentLinkedQueue<>();
     private final AtomicLong currentPageId;
 
     public MMAPBasedPageManager(File file, int pageSize) throws IOException {
@@ -49,18 +50,21 @@ public class MMAPBasedPageManager implements PageManager {
      * Can differentiate later for internal vs leaf pages if needed.
      */
     public Page allocateLeafPage() {
-        return allocatePage(true);
+        Long potentialPageId = freePagesIds.poll();
+        final long pageId = Objects.requireNonNullElseGet(potentialPageId, currentPageId::getAndIncrement);
+        // todo get buffer from mmaped file
+        ByteBuffer emptyPage = ByteBuffer.allocate(pageSize);
+        Page page = LeafPage.newPage(pageId, emptyPage);
+        writePage(pageId, page);
+        return page;
     }
 
     private Page allocatePage(boolean leaf) {
-        Page potentialPageId = freePages.poll();
-        if (potentialPageId != null) {
-            return potentialPageId;
-        }
-        long pageId = currentPageId.getAndIncrement();
+        Long potentialPageId = freePagesIds.poll();
+        final long pageId = Objects.requireNonNullElseGet(potentialPageId, currentPageId::getAndIncrement);
         // todo get buffer from mmaped file
         ByteBuffer emptyPage = ByteBuffer.allocate(pageSize);
-        Page page = Page.newPage(pageId, leaf, emptyPage);
+        Page page = InternalPage.newPage(pageId, emptyPage);
         writePage(pageId, page);
         return page;
     }
@@ -83,7 +87,7 @@ public class MMAPBasedPageManager implements PageManager {
                 throw new UncheckedIOException(e);
             }
             buffer.flip();
-            return new Page(buffer);
+            return PageFactory.read(buffer);
         } finally {
             lock.readLock().unlock();
         }
@@ -111,9 +115,10 @@ public class MMAPBasedPageManager implements PageManager {
         }
     }
 
-    public void freePage(Page page) {
-        pageLocks.remove(page.pageId());
-        freePages.offer(page);
+    @Override
+    public void freePage(long pageId) {
+        pageLocks.remove(pageId);
+        freePagesIds.offer(pageId);
     }
 
     public long getAllocatedPageCount() {

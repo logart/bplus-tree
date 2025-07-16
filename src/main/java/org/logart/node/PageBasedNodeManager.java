@@ -24,12 +24,12 @@ public class PageBasedNodeManager implements NodeManager {
 
     @Override
     public void writeNode(long nodeId, BTreeNode node) {
-
+        pageManager.writePage(nodeId, ((PersistentBTreeNode) node).page());
     }
 
     @Override
     public void freeNode(long nodeId) {
-
+        pageManager.freePage(nodeId);
     }
 
     @Override

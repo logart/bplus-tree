@@ -1,13 +1,18 @@
-package org.logart;
+package org.logart.page;
+
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Arrays;
+import java.util.Comparator;
 
-public class Page {
+import static org.logart.page.PageFactory.LEAF_FLAG;
+
+public class LeafPage implements Page {
     public static final int PAGE_SIZE = 4096;
+    private static final Comparator<byte[]> COMPARATOR = Arrays::compareUnsigned;
 
     // Header offsets
-    public static final int LEAF_FLAG = 0b1000_0000;
     public static final int FREE_SPACE_OFFSET = 11;
     private static final int PAGE_ID_OFFSET = 1;
     private static final int HEADER_SIZE = 32;
@@ -17,11 +22,11 @@ public class Page {
 
     private final ByteBuffer buffer;
 
-    public Page(ByteBuffer buffer) {
+    public LeafPage(ByteBuffer buffer) {
         this.buffer = buffer.order(ByteOrder.BIG_ENDIAN);
     }
 
-    public static Page newPage(long pageId, boolean isLeaf, ByteBuffer buf) {
+    public static Page newPage(long pageId, ByteBuffer buf) {
         /**
          * page format:
          * Page metadata:       1 byte
@@ -33,12 +38,16 @@ public class Page {
          * Right sibling ptr	8 bytes	Only for leaf pages
          * Parent ptr / unused	8 bytes	Optional
          * Reserved	~5 bytes	Padding
+         *
+         * Slot table:          2 bytes per entry
+         * Free space:          variable size
+         * Payload:             variable size
          */
-        buf.put(0, (byte) (isLeaf ? 0b1000_0000 : 0)); // First bit = Leaf/Internal
+        buf.put(0, (byte) 0b1000_0000); // First bit = Leaf/Internal
         buf.putLong(PAGE_ID_OFFSET, pageId);
         buf.putShort(ENTRY_COUNT_OFFSET, (short) 0);
-        buf.putShort(FREE_SPACE_OFFSET, (short) HEADER_SIZE);
-        return new Page(buf);
+        buf.putShort(FREE_SPACE_OFFSET, (short) PAGE_SIZE);
+        return new LeafPage(buf);
     }
 
     public int getEntryCount() {
@@ -60,12 +69,13 @@ public class Page {
 
     public boolean put(byte[] key, byte[] value) {
         int entryCount = getEntryCount();
-        int slotOffset = PAGE_SIZE - SLOT_SIZE * (entryCount + 1);
-        int freeSpaceOffset = getFreeSpaceOffset();
+        LeafPageLoc pageLoc = searchKeyIdx(key);
+        int slotOffset = SLOT_SIZE * entryCount + HEADER_SIZE;
 
+        int freeSpaceOffset = getFreeSpaceOffset();
         int payloadSize = 2 + key.length + 2 + value.length;
 
-        if (slotOffset < freeSpaceOffset + payloadSize) {
+        if (slotOffset > freeSpaceOffset - payloadSize) {
             // write info about page is full
             byte pageMeta = buffer.get(0);
             pageMeta = (byte) (pageMeta | FULL_FLAG);
@@ -74,7 +84,8 @@ public class Page {
         }
 
         // Write key-value to payload area
-        int kvOffset = freeSpaceOffset;
+        int dataStart = freeSpaceOffset - payloadSize;
+        int kvOffset = dataStart;
         buffer.putShort(kvOffset, (short) key.length);
         kvOffset += 2;
         buffer.put(kvOffset, key);
@@ -84,20 +95,70 @@ public class Page {
         buffer.put(kvOffset, value);
 
         // Write slot
-        buffer.putShort(slotOffset, (short) freeSpaceOffset);
+        setFreeSpaceOffset(freeSpaceOffset - payloadSize);
+
+        int idx = pageLoc.idx();
+        if (pageLoc.k() != null && COMPARATOR.compare(pageLoc.k(), key) == 0) {
+            // Key already exists, update value
+            buffer.putShort(HEADER_SIZE + SLOT_SIZE * idx, (short) dataStart);
+            return true;
+        }
+        if (idx >= 0 && idx < entryCount) {
+            // move bigger entry to the right
+            int start = HEADER_SIZE + SLOT_SIZE * idx;
+            int end = slotOffset;
+            byte[] tmp = new byte[end - start];
+            // leave two bytes for the new entry
+            buffer.get(start, tmp);
+
+            buffer.putShort(start, (short) dataStart);
+            buffer.put(start + SLOT_SIZE, tmp);
+        } else {
+            buffer.putShort(slotOffset, (short) dataStart);
+        }
 
         // Update header
-        setFreeSpaceOffset(freeSpaceOffset + payloadSize);
         setEntryCount(entryCount + 1);
 
         return true;
+    }
+
+    public byte[][] getEntry(byte[] key) {
+        LeafPageLoc pageLoc = searchKeyIdx(key);
+        if (pageLoc.idx() == -1 || pageLoc.k() == null) {
+            return null;
+        }
+        return new byte[][]{pageLoc.k(), pageLoc.v()};
+    }
+
+    private LeafPageLoc searchKeyIdx(byte[] key) {
+        int l = 0;
+        int r = getEntryCount();
+        int idx = -1;
+        int compare = 0;
+        while (l < r) {
+            idx = (l + r) / 2;
+            byte[][] entry = getEntry(idx);
+            compare = COMPARATOR.compare(key, entry[0]);
+            if (compare < 0) {
+                r = idx;
+            } else if (compare > 0) {
+                l = idx + 1;
+            } else {
+                return new LeafPageLoc(idx, entry[0], entry[1]); // found
+            }
+        }
+        if (compare > 0) {
+            idx++;
+        }
+        return new LeafPageLoc(idx, null, null);
     }
 
     public byte[][] getEntry(int index) {
         int entryCount = getEntryCount();
         if (index >= entryCount) return null;
 
-        int slotOffset = PAGE_SIZE - SLOT_SIZE * (index + 1);
+        int slotOffset = HEADER_SIZE + SLOT_SIZE * index;
         int kvOffset = Short.toUnsignedInt(buffer.getShort(slotOffset));
 
         int keyLen = Short.toUnsignedInt(buffer.getShort(kvOffset));
@@ -114,17 +175,6 @@ public class Page {
         return new byte[][]{key, value};
     }
 
-    public byte[][] loadKeys() {
-        int entryCount = getEntryCount();
-
-        // todo THIS IS SUPER INEFFICIENT, FIX IT BEFORE SEND FOR REVIEW
-        byte[][] result = new byte[entryCount][];
-        for (int i = 0; i < entryCount; i++) {
-            result[i] = getEntry(i)[0];
-        }
-        return result;
-    }
-
     public boolean isLeaf() {
         byte pageMeta = buffer.get(0);
         // we compare with 128 instead of 1 because 0b1000_0000 does not fit in a byte
@@ -137,6 +187,16 @@ public class Page {
         return (pageMeta & FULL_FLAG) == FULL_FLAG;
     }
 
+    @Override
+    public long getChild(byte[] key) {
+        throw new UnsupportedOperationException("Leaf pages do not have children.");
+    }
+
+    @Override
+    public boolean addChild(byte[] key, int left, int right) {
+        throw new UnsupportedOperationException("Leaf pages do not have children.");
+    }
+
     public long pageId() {
         return buffer.getLong(PAGE_ID_OFFSET);
     }
@@ -145,7 +205,12 @@ public class Page {
         return buffer;
     }
 
-//    public void force() {
-//        buffer.force();
-//    }
+    @Override
+    public void copy(Page page) {
+        long currentId = pageId();
+        buffer.rewind();
+        page.buffer().rewind();
+        buffer.put(page.buffer());
+        buffer.putLong(PAGE_ID_OFFSET, currentId); // Ensure the page ID remains the same
+    }
 }

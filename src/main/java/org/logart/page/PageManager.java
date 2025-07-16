@@ -1,8 +1,5 @@
 package org.logart.page;
 
-import org.logart.Page;
-import org.logart.node.BTreeNode;
-
 public interface PageManager {
     Page allocatePage();
 
@@ -12,7 +9,7 @@ public interface PageManager {
 
     void writePage(long pageId, Page page);
 
-    void freePage(Page page);
+    void freePage(long pageId);
 
     void close();
 }

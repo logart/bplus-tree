@@ -98,6 +98,7 @@ public class DefaultBPlusTree implements BPlusTree {
             return split(nodeCopy);
         }
 
+        nodeManager.writeNode(nodeCopy.id(), nodeCopy);
         return new SplitResult(nodeCopy, null, null, null, oldNodes);
     }
 
@@ -116,6 +117,8 @@ public class DefaultBPlusTree implements BPlusTree {
                 right.put(data[0], data[1]);
             }
 
+            nodeManager.writeNode(left.id(), left);
+            nodeManager.writeNode(right.id(), right);
             return new SplitResult(null, right.get(0)[0], left, right, Collections.singleton(node.id()));
         } else {
             byte[] promotedKey = node.get(mid)[0];
@@ -125,6 +128,8 @@ public class DefaultBPlusTree implements BPlusTree {
             BTreeNode right = nodeManager.allocateNode();
             right.copyChildren(node, mid, node.numKeys());
 
+            nodeManager.writeNode(left.id(), left);
+            nodeManager.writeNode(right.id(), right);
             return new SplitResult(null, promotedKey, left, right, Collections.singleton(node.id()));
         }
     }

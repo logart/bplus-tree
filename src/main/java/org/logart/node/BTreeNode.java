@@ -9,8 +9,6 @@ public interface BTreeNode {
 
     byte[][] get(int idx);
 
-    void remove(int start, int end);
-
     boolean isFull();
 
     void copyChildren(BTreeNode node, int startIdx, int endIdx);
