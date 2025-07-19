@@ -154,7 +154,9 @@ public class InMemoryBTreeNode implements BTreeNode {
     public String toString() {
         return "InMemoryBTreeNode{" +
                 "id=" + id +
+                ", l=" + leaf +
                 ", data=" + dataToString() +
+                ", children=" + Arrays.toString(children) +
                 '}';
     }
 

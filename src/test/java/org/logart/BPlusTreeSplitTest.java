@@ -4,8 +4,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.logart.node.MapBasedNodeManager;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
+
+import static java.util.stream.Collectors.groupingBy;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class BPlusTreeSplitTest {
 
@@ -84,5 +88,39 @@ public class BPlusTreeSplitTest {
         tree.put("10".getBytes(), "Y".getBytes());
 
         assertArrayEquals("Y".getBytes(), tree.get("10".getBytes())); // Assuming overwrite semantics
+    }
+
+    @Test
+    public void shouldOnlyUseRootLeafBeforeOverflow() {
+        for (int i = 0; i < 2; i++) {
+            byte[] key = String.format("%02d", i).getBytes(StandardCharsets.UTF_8);
+            byte[] value = ("val" + i).getBytes(StandardCharsets.UTF_8);
+            tree.put(key, value);
+            List<Long> usedPageIds = ((DefaultBPlusTree) tree).collectReachablePageIds();
+            assertEquals(1, usedPageIds.size());
+        }
+    }
+
+    @Test
+    public void splitShouldNotProduceDuplicatePageIdReferences() {
+        for (int i = 0; i < 2000; i++) {
+            byte[] key = String.format("%02d", i).getBytes(StandardCharsets.UTF_8);
+            byte[] value = ("val" + i).getBytes(StandardCharsets.UTF_8);
+            tree.put(key, value);
+            // split starts
+            if (i >= 3) {
+                List<Long> usedPageIds = ((DefaultBPlusTree) tree).collectReachablePageIds();
+                assertTrue(usedPageIds.size() > 1);
+                Map<Long, List<Long>> groupedUsedPageIds = usedPageIds.stream()
+                        .collect(groupingBy(Long::longValue));
+                for (Map.Entry<Long, List<Long>> entry : groupedUsedPageIds.entrySet()) {
+                    assertEquals(1, entry.getValue().size(),
+                            "Page ID " + entry.getKey() + " should not be duplicated, found " +
+                                    entry.getValue().size() + " times"
+                    );
+
+                }
+            }
+        }
     }
 }

@@ -1,5 +1,7 @@
 package org.logart.node;
 
+import org.logart.Versioned;
+import org.logart.VersionedRefCounter;
 import org.logart.page.PageManager;
 
 public class PageBasedNodeManager implements NodeManager {
@@ -28,12 +30,32 @@ public class PageBasedNodeManager implements NodeManager {
     }
 
     @Override
-    public void freeNode(long nodeId) {
+    public void freeNode(long nodeId, long version) {
         pageManager.freePage(nodeId);
+    }
+
+    @Override
+    public boolean advanceVersion(Versioned<BTreeNode> currentVersionedRoot, BTreeNode newRoot) {
+        return false;
+    }
+
+    @Override
+    public Versioned<BTreeNode> lockVersion() {
+        return null;
+    }
+
+    @Override
+    public void releaseVersion(Versioned<BTreeNode> versionedRoot) {
+
     }
 
     @Override
     public void close() {
 
+    }
+
+    @Override
+    public VersionedRefCounter refCounter() {
+        return null;
     }
 }

@@ -10,10 +10,6 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class BPlusTreeLeakCheckTest {
-
-    // this is a bug with not cleaning up all the children,
-    // I believe this will be fixed by establishing a right sibling link and checking if it references the same children
-    // unfortunately I don't have time to properly fix ut now.
     @Test
     public void testNoLeakedPagesAfterCopyOnWrite() {
         NodeManager nodeManager = new MapBasedNodeManager();
@@ -23,20 +19,28 @@ public class BPlusTreeLeakCheckTest {
 
         // Fill the tree with data
         for (int i = 0; i < total; i++) {
+            System.out.println("Adding key: key" + i);
             tree.put(("key" + i).getBytes(), ("value" + i).getBytes());
+            assertNoLeak((DefaultBPlusTree) tree, (MapBasedNodeManager) nodeManager);
         }
 
         // Force copy-on-write: overwrite same keys
         for (int i = 0; i < total; i++) {
+            System.out.println("Updating key: key" + i);
             tree.put(("key" + i).getBytes(), ("newvalue" + i).getBytes());
+            assertNoLeak((DefaultBPlusTree) tree, (MapBasedNodeManager) nodeManager);
         }
 
-        // Gather IDs from live tree
-        Set<Long> reachablePages = ((DefaultBPlusTree) tree).collectReachablePageIds();
+        assertNoLeak((DefaultBPlusTree) tree, (MapBasedNodeManager) nodeManager);
+    }
+
+    private static void assertNoLeak(DefaultBPlusTree tree, MapBasedNodeManager nodeManager) {
+        // Gather IDs from a live tree
+        Set<Long> reachablePages = Set.copyOf(tree.collectReachablePageIds());
 
         // Get all ever-allocated pages and freed ones
-        Set<Long> allocatedPages = ((MapBasedNodeManager)nodeManager).getAllAllocatedNodeIds();
-        Set<Long> freedPages = ((MapBasedNodeManager)nodeManager).getFreedNodeIds();
+        Set<Long> allocatedPages = nodeManager.getAllAllocatedNodeIds();
+        Set<Long> freedPages = nodeManager.getFreedNodeIds();
 
         // Check for leaks: allocated pages not reachable and not freed
         Set<Long> leaked = new HashSet<>(allocatedPages);

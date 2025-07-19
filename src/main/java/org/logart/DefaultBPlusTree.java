@@ -3,32 +3,44 @@ package org.logart;
 import org.logart.node.BTreeNode;
 import org.logart.node.NodeManager;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.*;
 
 public class DefaultBPlusTree implements BPlusTree {
     private final NodeManager nodeManager;
-    private final AtomicReference<Versioned<BTreeNode>> root;
 
     public DefaultBPlusTree(NodeManager nodeManager) {
         this.nodeManager = nodeManager;
-        this.root = new AtomicReference<>(new Versioned<>(nodeManager.allocateLeafNode(), 0)); // start with an empty node
     }
 
     @Override
     public byte[] get(byte[] key) {
-        return recursiveGet(key, root.get().get());
+        Versioned<BTreeNode> versionedRoot = nodeManager.lockVersion();
+        try {
+            return recursiveGet(key, versionedRoot.get(), versionedRoot.version());
+        } finally {
+            nodeManager.releaseVersion(versionedRoot);
+        }
     }
 
-    private byte[] recursiveGet(byte[] key, BTreeNode node) {
+    private byte[] recursiveGet(byte[] key, BTreeNode node, long version) {
+        assert (node != null) : "At version: " + version
+                + " version ref counter is: " + nodeManager.refCounter().getRefCount(version)
+                + " available version are: " + nodeManager.refCounter().toString()
+                + " Node: " + node + ", key: " + new String(key);
         if (node.isLeaf()) {
             return node.get(key);
         }
         long next = node.findChild(key);
-        return recursiveGet(key, nodeManager.readNode(next));
+        try {
+            return recursiveGet(key, nodeManager.readNode(next), version);
+        } catch (NullPointerException | AssertionError e) {
+            System.out.println("At version: " + version
+                    + " version ref counter is: " + nodeManager.refCounter().getRefCount(version)
+                    + " available version are: " + nodeManager.refCounter().toString()
+                    + " Node: " + node + ", key: " + new String(key)
+            );
+            throw e;
+        }
     }
 
     @Override
@@ -37,28 +49,51 @@ public class DefaultBPlusTree implements BPlusTree {
         BTreeNode newRoot;
         BTreeNode currentRoot;
         SplitResult splitResult;
+        Versioned<BTreeNode> currentVersionedRoot;
+        long version;
         do {
-            Versioned<BTreeNode> currentVersionedRoot = root.get();
-            currentRoot = currentVersionedRoot.get();
-            splitResult = put(currentRoot, key, value);
+            currentVersionedRoot = nodeManager.lockVersion();
+            try {
+                currentRoot = currentVersionedRoot.get();
+                version = currentVersionedRoot.version();
+
+                try {
+                    splitResult = put(currentRoot, key, value, version);
+                } catch (NullPointerException | AssertionError e) {
+                    System.out.println("At version: " + version
+                            + " version ref counter is: " + nodeManager.refCounter().getRefCount(version)
+                            + " available version are: " + nodeManager.refCounter().toString()
+                            + " Node: " + currentRoot + ", key: " + new String(key)
+                    );
+                    throw e;
+                }
 
 //             in case root was updated, but there is no split
-            newRoot = splitResult.nodeCopy();
-            if (splitResult.promotedKey() != null) {
-                newRoot = nodeManager.allocateNode();
-                newRoot.addChildren(splitResult.promotedKey(), splitResult.left().id(), splitResult.right().id());
+                newRoot = splitResult.nodeCopy();
+                if (splitResult.promotedKey() != null) {
+                    newRoot = nodeManager.allocateNode();
+                    newRoot.addChildren(splitResult.promotedKey(), splitResult.left().id(), splitResult.right().id());
+                }
+                rootUpdated = nodeManager.advanceVersion(currentVersionedRoot, newRoot);
+            } finally {
+                nodeManager.releaseVersion(currentVersionedRoot);
             }
-            rootUpdated = root.compareAndSet(currentVersionedRoot, new Versioned<>(newRoot, currentVersionedRoot.version() + 1));
 //             if root is already different, we have to retry
         } while (!rootUpdated);
-        nodeManager.freeNode(currentRoot.id());
+        // we have to only write nodes after root is updated
+        nodeManager.freeNode(currentRoot.id(), version);
         for (long oldNodeId : splitResult.oldNodes()) {
-            nodeManager.freeNode(oldNodeId);
+            nodeManager.freeNode(oldNodeId, version);
         }
         nodeManager.writeNode(newRoot.id(), newRoot);
     }
 
-    private SplitResult put(BTreeNode node, byte[] key, byte[] value) {
+    private SplitResult put(BTreeNode node, byte[] key, byte[] value, long version) {
+        assert (node != null) : "At version: " + version
+                + " version ref counter is: " + nodeManager.refCounter().getRefCount(version)
+                + " available version are: " + nodeManager.refCounter().toString()
+                + " Node: " + node + ", key: " + new String(key);
+
         Set<Long> oldNodes = new HashSet<>();
         BTreeNode nodeCopy;
         if (node.isLeaf()) {
@@ -70,13 +105,21 @@ public class DefaultBPlusTree implements BPlusTree {
             long childId = node.findChild(key);
             BTreeNode child = nodeManager.readNode(childId);
 
-            assert (child != null) : "Node with id: " + childId + " was null. Node: " + node + ", key: " + new String(key);
-            SplitResult splitResult = put(child, key, value);
+            SplitResult splitResult;
+            try {
+                splitResult = put(child, key, value, version);
+            } catch (NullPointerException | AssertionError e) {
+                System.out.println("At version: " + version
+                        + " version ref counter is: " + nodeManager.refCounter().getRefCount(version)
+                        + " available version are: " + nodeManager.refCounter().toString()
+                        + " Node: " + node + ", key: " + new String(key)
+                );
+                throw e;
+            }
             oldNodes.addAll(splitResult.oldNodes());
             BTreeNode childCopy = splitResult.nodeCopy();
 
             nodeCopy = nodeManager.allocateNode();
-            // 994
             nodeCopy.copy(node);
             oldNodes.add(node.id());
             if (childCopy != null) {
@@ -86,8 +129,6 @@ public class DefaultBPlusTree implements BPlusTree {
 
             if (splitResult.promotedKey() != null) {
                 // Insert promotedKey and child pointers
-                nodeCopy = nodeManager.allocateNode();
-                nodeCopy.copy(node);
                 nodeCopy.addChildren(splitResult.promotedKey(), splitResult.left().id(), splitResult.right().id());
                 oldNodes.add(node.id());
             }
@@ -95,7 +136,12 @@ public class DefaultBPlusTree implements BPlusTree {
         if (nodeCopy.isFull()) {
             // this split could be moved to the beginning, right now it's suboptimal we first copy the node and write to it, but then split could copy it one more time
             // unfortunately, I would not be able to it now because of lack of time
-            return split(nodeCopy);
+            SplitResult splitResult = split(nodeCopy);
+            // add old nodes to the set
+            Set<Long> combinedOldNodes = new HashSet<>(splitResult.oldNodes());
+            combinedOldNodes.addAll(oldNodes);
+            // I know that copying of objects is expensive, but I would like to have immutability here
+            return new SplitResult(splitResult.nodeCopy(), splitResult.promotedKey(), splitResult.left(), splitResult.right(), combinedOldNodes);
         }
 
         nodeManager.writeNode(nodeCopy.id(), nodeCopy);
@@ -126,7 +172,7 @@ public class DefaultBPlusTree implements BPlusTree {
             left.copyChildren(node, 0, mid);
 
             BTreeNode right = nodeManager.allocateNode();
-            right.copyChildren(node, mid, node.numKeys());
+            right.copyChildren(node, mid + 1, node.numKeys());
 
             nodeManager.writeNode(left.id(), left);
             nodeManager.writeNode(right.id(), right);
@@ -147,7 +193,12 @@ public class DefaultBPlusTree implements BPlusTree {
     public String printStructure() {
         StringBuilder sb = new StringBuilder();
         sb.append("B+ Tree Structure:\n");
-        printRecursive(root.get().get(), sb, 0);
+        Versioned<BTreeNode> currentVersionedRoot = nodeManager.lockVersion();
+        try {
+            printRecursive(currentVersionedRoot.get(), sb, 0);
+        } finally {
+            nodeManager.releaseVersion(currentVersionedRoot);
+        }
         sb.append("B+ Tree Structure end.\n\n");
         return sb.toString();
     }
@@ -186,17 +237,25 @@ public class DefaultBPlusTree implements BPlusTree {
         return printStructure();
     }
 
-    public Set<Long> collectReachablePageIds() {
-        return new HashSet<>(collectRecursive(root.get().get()));
+    // this implementation uses list and not set since it is used for debugging purposes,
+    // and part of testing and debugging is to make sure no page is referenced twice
+    public List<Long> collectReachablePageIds() {
+        Versioned<BTreeNode> bTreeNodeVersioned = nodeManager.lockVersion();
+        try {
+            return new LinkedList<>(collectRecursive(bTreeNodeVersioned.get()));
+        } finally {
+            nodeManager.releaseVersion(bTreeNodeVersioned);
+        }
     }
 
-    private Set<Long> collectRecursive(BTreeNode node) {
-        Set<Long> visited = new HashSet<>();
+    private List<Long> collectRecursive(BTreeNode node) {
+        List<Long> visited = new LinkedList<>();
+
+        visited.add(node.id());
 
         if (!node.isLeaf()) {
             for (long childId : node.childrenDebugTODOREMOVE()) {
                 if (childId != -1) {
-                    visited.add(childId);
                     BTreeNode child = nodeManager.readNode(childId);
                     if (child == null) {
                         throw new IllegalStateException("Child node with id " + childId + " is reachable from node " + node.id() + " but is deallocated.");
