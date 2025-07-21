@@ -182,9 +182,11 @@ public class LeafPage implements Page {
         return (pageMeta & LEAF_FLAG) == LEAF_FLAG;
     }
 
-    public boolean isFull() {
+    @Override
+    public boolean isAlmostFull(long capacity) {
         byte pageMeta = buffer.get(0);
-        return (pageMeta & FULL_FLAG) == FULL_FLAG;
+        return (pageMeta & FULL_FLAG) == FULL_FLAG
+                || (getFreeSpaceOffset() - HEADER_SIZE) < capacity; // Check if free space is less than capacity
     }
 
     @Override

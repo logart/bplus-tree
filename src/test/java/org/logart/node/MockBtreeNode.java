@@ -22,7 +22,7 @@ public class MockBtreeNode implements BTreeNode {
     }
 
     @Override
-    public boolean isFull() {
+    public boolean isAlmostFull(long capacity) {
         return false;
     }
 

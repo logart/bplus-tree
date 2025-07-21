@@ -64,21 +64,15 @@ public class VersionedRefCounter<T> {
     }
 
     private long floorUsedVersion(long version) {
-        boolean proceed = true;
-        Map.Entry<Long, AtomicInteger> prev = null, current = null;
-        while (proceed) {
-            prev = current;
-            current = refCounts.pollFirstEntry();
-            // there is next version to check
-            proceed = current != null
-                    // the next version is still smaller than the last version we want to clean up
-                    && current.getKey() <= version
-                    // the next version is not in use
+        Map.Entry<Long, AtomicInteger> prev = null;
+        for (Map.Entry<Long, AtomicInteger> current : refCounts.entrySet()) {
+            // the current version is smaller or equal to the version we want to clean up
+            boolean proceed = current.getKey() <= version
+                    // the current version is not in use
                     && current.getValue().get() <= 0;
-        }
-        if (current != null) {
-            // return last entry back
-            refCounts.put(current.getKey(), current.getValue());
+            if (proceed) {
+                prev = current;
+            }
         }
         return keyOrNone(prev);
     }

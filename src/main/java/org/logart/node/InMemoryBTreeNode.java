@@ -66,9 +66,9 @@ public class InMemoryBTreeNode implements BTreeNode {
     }
 
     @Override
-    public boolean isFull() {
+    public boolean isAlmostFull(long capacity) {
         // we can cache this value, but again for speed and simplicity it does not matter for in-memory implementation
-        return numKeys == PAGE_SIZE;
+        return numKeys == PAGE_SIZE - 1;
     }
 
     @Override

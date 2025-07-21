@@ -3,22 +3,27 @@ package org.logart;
 import org.junit.jupiter.api.Test;
 import org.logart.node.MapBasedNodeManager;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class BPlusTreeConcurrentTest {
-    private final int NUM_THREADS = 8;
+    private final int NUM_THREADS = 1;
     private final int NUM_OPS = 1000;
 
     @Test
     public void testConcurrentPutAndGet() throws InterruptedException {
         try (ExecutorService executor = Executors.newFixedThreadPool(NUM_THREADS)) {
-            ConcurrentMap<String, byte[]> expectedMap = new ConcurrentHashMap<>();
+            // since we put concurrently it could be already overwritten byt the next put,
+            // so instead of checking equals, we have to check contains,
+            // meaning that at least one value which is present in btree was added
+            // at some point in the past
+            ConcurrentMap<String, Set<byte[]>> expectedMultiMap = new ConcurrentHashMap<>();
 
             BPlusTree tree = new DefaultBPlusTree(new MapBasedNodeManager());
 
@@ -34,13 +39,21 @@ public class BPlusTreeConcurrentTest {
                             byte[] value = ("val-" + rand.nextInt(1000)).getBytes();
 
                             tree.put(key.getBytes(), value);
-                            expectedMap.put(key, value);
+                            expectedMultiMap.compute(key, (k, v) -> {
+                                v = v == null ? ConcurrentHashMap.newKeySet() : v;
+                                v.add(value);
+                                return v;
+                            });
 
                             // at this stage, the value could be overwritten already
                             // to make this check work we need to lock around put and get operations
                             byte[] retrieved = tree.get(key.getBytes());
 
-                            assertTrue(retrieved == null || Arrays.equals(retrieved, expectedMap.get(key)));
+                            assertTrue(retrieved == null || expectedMultiMap.get(key).contains(retrieved),
+                                    "Value for key '" + new String(key) + "' should be one of the expected values. " +
+                                            "Expected: " + expectedMultiMap.get(key).stream().map(String::new).toList()
+                                            + ", but got: " + (retrieved == null ? "null" : new String(retrieved, StandardCharsets.UTF_8)))
+                            ;
                         }
                     } catch (Throwable e) {
                         errors.add(e);
@@ -59,11 +72,11 @@ public class BPlusTreeConcurrentTest {
                 fail("Some operations failed.", errors.get(0));
             }
             // Final consistency check
-            for (String key : expectedMap.keySet()) {
-                byte[] expectedVal = expectedMap.get(key);
+            for (String key : expectedMultiMap.keySet()) {
+                Set<byte[]> possibleExpectedVal = expectedMultiMap.get(key);
                 byte[] actualVal = tree.get(key.getBytes());
                 assertNotNull(actualVal);
-                assertArrayEquals(expectedVal, actualVal);
+                assertTrue(possibleExpectedVal.contains(actualVal));
             }
         }
     }

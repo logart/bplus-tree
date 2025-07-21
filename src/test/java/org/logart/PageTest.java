@@ -40,7 +40,7 @@ public class PageTest {
         while (page.put("key".getBytes(), "value".getBytes())) {
             // Fill the page
         }
-        assertTrue(page.isFull());
+        assertTrue(page.isAlmostFull(0));
     }
 
     @Test

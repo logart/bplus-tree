@@ -9,7 +9,7 @@ public interface BTreeNode {
 
     byte[][] get(int idx);
 
-    boolean isFull();
+    boolean isAlmostFull(long capacity);
 
     void copyChildren(BTreeNode node, int startIdx, int endIdx);
 

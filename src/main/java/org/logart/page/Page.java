@@ -16,7 +16,7 @@ public interface Page {
 
     byte[][] getEntry(int idx);
 
-    boolean isFull();
+    boolean isAlmostFull(long capacity);
 
     long getChild(byte[] key);
 

@@ -318,7 +318,7 @@ public class PageManagerTest {
         key[0] = val;
         byte[] value = new byte[1];
         value[0] = val;
-        while (!page.isFull()) {
+        while (!page.isAlmostFull(key.length + value.length)) {
             page.put(key, value);
             keys++;
         }

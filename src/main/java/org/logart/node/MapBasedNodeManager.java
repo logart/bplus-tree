@@ -3,7 +3,7 @@ package org.logart.node;
 import org.logart.Versioned;
 import org.logart.VersionedRefCounter;
 
-import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -77,18 +77,21 @@ public class MapBasedNodeManager implements NodeManager {
     private void removePotentiallyFreedNodes(long version) {
         boolean proceed = true;
         while (proceed) {
-            PageAndVersion first = freeCandidates.pollFirst();
+            PageAndVersion first;
+            try {
+                first = freeCandidates.first();
+            } catch (NoSuchElementException e) {
+//                this is crazy I need to do it
+                // no candidates to remove
+                return;
+            }
             // no items
             proceed = first != null
                     // this version could be in use still
                     && first.version() <= version;
             if (proceed) {
+                freeCandidates.remove(first);
                 freeNode(first.nodeId(), first.version());
-            } else {
-                // put first back to candidates
-                if (first != null) {
-                    freeCandidates.add(first);
-                }
             }
         }
     }

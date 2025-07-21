@@ -124,9 +124,11 @@ public class InternalPage implements Page {
         return (pageMeta & LEAF_FLAG) == LEAF_FLAG;
     }
 
-    public boolean isFull() {
+    @Override
+    public boolean isAlmostFull(long capacity) {
         byte pageMeta = buffer.get(0);
-        return (pageMeta & FULL_FLAG) == FULL_FLAG;
+        return (pageMeta & FULL_FLAG) == FULL_FLAG
+                || getFreeSpaceOffset() < HEADER_SIZE + SLOT_CHILD_POINTER + SLOT_SIZE * getEntryCount() + 2 + capacity;
     }
 
     public long pageId() {

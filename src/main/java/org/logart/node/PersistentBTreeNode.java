@@ -41,8 +41,8 @@ public class PersistentBTreeNode implements BTreeNode {
     }
 
     @Override
-    public boolean isFull() {
-        return page.isFull();
+    public boolean isAlmostFull(long capacity) {
+        return page.isAlmostFull(capacity);
     }
 
     @Override
