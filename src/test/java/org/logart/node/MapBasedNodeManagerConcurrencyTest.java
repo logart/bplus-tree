@@ -4,8 +4,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.logart.Versioned;
-import org.logart.page.memory.MapBasedPageManager;
 import org.logart.page.PageManager;
+import org.logart.page.memory.MapBasedPageManager;
 
 import java.util.List;
 import java.util.Random;
@@ -81,7 +81,7 @@ public class MapBasedNodeManagerConcurrencyTest {
 
             // All nodes that were freed should no longer be in allocatedNodes
             Set<Long> allocatedNodes = ((MapBasedPageManager) pageManager).getAllAllocatedPageIds();
-            Set<Long> freedNodes = ((MapBasedPageManager)pageManager).getFreedNodeIds();
+            Set<Long> freedNodes = ((MapBasedPageManager) pageManager).getFreedNodeIds();
             // 1 node is allocated in the constructor
             assertEquals(threads * opsPerThread + 1, allocatedNodes.size() + freedNodes.size());
             for (Long id : freedNodes) {
@@ -139,12 +139,7 @@ public class MapBasedNodeManagerConcurrencyTest {
         // get done
         nodeManager.releaseVersion(vget);
         // node should be released since get is done
-//        only after next advance it will be released
-        assertNotNull(nodeManager.readNode(nodeId), "Freed with vget still active!");
-
-        Versioned<BTreeNode> versionAfterPutAndGet = nodeManager.lockVersion();
-        nodeManager.advanceVersion(versionAfterPutAndGet, null);
-        assertNull(nodeManager.readNode(nodeId));
+        assertNull(nodeManager.readNode(nodeId), "Freed with vget still active!");
     }
 
     @Test

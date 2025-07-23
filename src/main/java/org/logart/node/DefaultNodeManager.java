@@ -75,19 +75,6 @@ public class DefaultNodeManager implements NodeManager {
         }
     }
 
-    @Override
-    public boolean advanceVersion(Versioned<BTreeNode> currentVersionedRoot, BTreeNode newRoot) {
-        boolean versionMovedOn = versionRefCounter.advanceVersion(currentVersionedRoot, newRoot);
-
-        if (versionMovedOn) {
-            long greatestUnusedVersion = versionRefCounter.cleanUpTo(currentVersionedRoot.version());
-            if (greatestUnusedVersion >= 0) {
-                removePotentiallyFreedNodes(greatestUnusedVersion);
-            }
-        }
-        return versionMovedOn;
-    }
-
     private void removePotentiallyFreedNodes(long version) {
         boolean proceed = true;
         while (proceed) {
@@ -111,19 +98,38 @@ public class DefaultNodeManager implements NodeManager {
     }
 
     @Override
+    public boolean advanceVersion(Versioned<BTreeNode> currentVersionedRoot, BTreeNode newRoot) {
+        boolean versionMovedOn = versionRefCounter.advanceVersion(currentVersionedRoot, newRoot);
+
+        if (versionMovedOn) {
+            cleanUp(currentVersionedRoot);
+        }
+        return versionMovedOn;
+    }
+
+    @Override
     public Versioned<BTreeNode> lockVersion() {
         return versionRefCounter.lockVersion();
     }
 
     @Override
     public void releaseVersion(Versioned<BTreeNode> versionedRoot) {
-        versionRefCounter.releaseVersion(versionedRoot);
+        int current = versionRefCounter.releaseVersion(versionedRoot);
+        if (current == 0 && versionRefCounter.safeToCleanUp(versionedRoot.version())) {
+            cleanUp(versionedRoot);
+        }
+    }
 
+    private void cleanUp(Versioned<BTreeNode> currentVersionedRoot) {
+        long greatestUnusedVersion = versionRefCounter.cleanUpTo(currentVersionedRoot.version());
+        if (greatestUnusedVersion >= 0) {
+            removePotentiallyFreedNodes(greatestUnusedVersion);
+        }
     }
 
     @Override
     public void close() {
-
+        pageManager.close();
     }
 
     @Override

@@ -3,7 +3,10 @@ package org.logart.tree;
 import org.logart.node.BTreeNode;
 import org.logart.node.NodeManager;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Set;
 
 public class PutHandler {
     private static final Comparator<byte[]> COMPARATOR = Arrays::compareUnsigned;
@@ -48,6 +51,7 @@ public class PutHandler {
             }
         }
 
+        nodeManager.writeNode(nodeCopy.id(), nodeCopy);
         return new PutResult(nodeCopy, oldNodes);
     }
 

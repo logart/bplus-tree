@@ -46,17 +46,26 @@ public class VersionedRefCounter<T> {
         counter.incrementAndGet();
     }
 
-    public void releaseVersion(Versioned<T> versionedRoot) {
+    public int releaseVersion(Versioned<T> versionedRoot) {
         AtomicInteger counter = refCounts.get(versionedRoot.version());
         if (counter != null) {
-            counter.decrementAndGet();
+            return counter.decrementAndGet();
         }
+        return 0;
     }
 
     // Get current ref count
     public int getRefCount(long version) {
         AtomicInteger counter = refCounts.get(version);
         return counter != null ? counter.get() : 0;
+    }
+
+    public boolean safeToCleanUp(long version) {
+        // it's safe to clean up all versions except current,
+        // we read from nextVersion with getAndIncrement
+        // which means if the current version is 5,
+        // nextVersion will be 6
+        return version < nextVersion.get() - 1;
     }
 
     public long cleanUpTo(long version) {

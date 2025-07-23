@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
@@ -150,11 +151,6 @@ public class PageBasedNodeManagerConcurrencyTest {
         // get done
         nodeManager.releaseVersion(vget);
         // node should be released since get is done
-//        only after next advance it will be released
-        assertNotNull(nodeManager.readNode(nodeId), "Freed with vget still active!");
-
-        Versioned<BTreeNode> versionAfterPutAndGet = nodeManager.lockVersion();
-        nodeManager.advanceVersion(versionAfterPutAndGet, null);
         assertReleased(nodeId);
     }
 
@@ -244,8 +240,9 @@ public class PageBasedNodeManagerConcurrencyTest {
 
     @Test
     void concurrentAccessRespectsVersionPins() throws InterruptedException {
-        int threads = 1;
+        int threads = 16;
         long id;
+        AtomicBoolean releasedOnce = new AtomicBoolean(false);
         try (ExecutorService executor = Executors.newFixedThreadPool(threads)) {
             CountDownLatch startLatch = new CountDownLatch(threads);
             CountDownLatch finishLatch = new CountDownLatch(threads);
@@ -280,12 +277,20 @@ public class PageBasedNodeManagerConcurrencyTest {
 
             startLatch.await();
             while (!usedVersions.isEmpty()) {
-                usedVersions.forEach(version -> nodeManager.freeNode(id, version));
+                usedVersions.forEach(version -> {
+                    releasedOnce.set(true);
+                    nodeManager.freeNode(id, version);
+                });
             }
             finishLatch.await();
+            // we need to advance a version at least once since it's not safe to clean up the current version
+            Versioned<BTreeNode> current = nodeManager.lockVersion();
+            nodeManager.advanceVersion(current, null);
+            nodeManager.releaseVersion(current);
             executor.shutdown();
         }
 
+        assertTrue(releasedOnce.get(), "There was no attempt to release the node.");
         assertReleased(id);
     }
 

@@ -93,7 +93,7 @@ public class DefaultBTreeNode implements BTreeNode {
 
     @Override
     public String toString() {
-        return "InMemoryBTreeNode{" +
+        return "DefaultBTreeNode{" +
                 "id=" + page.pageId() +
                 ", l=" + page.isLeaf() +
                 ", data=" + dataToString() +

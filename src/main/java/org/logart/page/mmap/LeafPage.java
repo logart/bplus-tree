@@ -132,9 +132,13 @@ public class LeafPage implements Page {
 
     @Override
     public byte[] get(byte[] key) {
-        return new byte[0];
+        byte[][] entry = getEntry(key);
+        return entry != null
+                ? entry[1]
+                : null;
     }
 
+    @Override
     public byte[][] getEntry(byte[] key) {
         LeafPageLoc pageLoc = searchKeyIdx(key);
         if (pageLoc.idx() == -1 || pageLoc.k() == null) {
