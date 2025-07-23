@@ -1,74 +1,42 @@
 package org.logart.node;
 
+import org.logart.page.Page;
+
 import java.util.Arrays;
 import java.util.Comparator;
 
 public class InMemoryBTreeNode implements BTreeNode {
     private static final Comparator<byte[]> COMPARATOR = Arrays::compareUnsigned;
-    // keep page size small for memory testing,
-    // this should produce more splits that are good for testing
-    private static final int PAGE_SIZE = 3;
+    private final Page page;
 
-    private final long id;
-    private byte[][] keys;
-    private byte[][] values;
-    private long[] children;
-
-    private int numKeys = 0;
-
-    private final boolean leaf;
-
-    public InMemoryBTreeNode(long id, boolean leaf) {
-        this.id = id;
-        this.keys = new byte[PAGE_SIZE][];
-        this.values = new byte[PAGE_SIZE][];
-        this.children = new long[PAGE_SIZE + 1]; // children should have +1 because the first key should have left children reference
-        Arrays.fill(this.children, -1);
-        this.leaf = leaf;
+    public InMemoryBTreeNode(Page page) {
+        this.page = page;
     }
 
     @Override
     public long id() {
-        return id;
+        return page.pageId();
     }
 
     @Override
     public void put(byte[] key, byte[] value) {
-        int idx = searchKeyIdx(key);
-        if (COMPARATOR.compare(keys[idx], key) == 0) {
-            values[idx] = value;
-            return; // key already exists, update value
-        }
-        if (numKeys > idx) {
-            System.arraycopy(keys, idx, keys, idx + 1, numKeys - idx);
-            System.arraycopy(values, idx, values, idx + 1, numKeys - idx);
-        }
-        keys[idx] = key;
-        values[idx] = value;
-        numKeys++;
+        page.put(key, value);
     }
 
     @Override
     public byte[] get(byte[] key) {
-        // todo binary search for key
-        // does not matter much for in-memory implementation
-        for (int i = 0; i < keys.length; i++) {
-            if (keys[i] != null && java.util.Arrays.equals(keys[i], key)) {
-                return values[i];
-            }
-        }
-        return null;
+        return page.get(key);
     }
 
     @Override
     public byte[][] get(int idx) {
-        return keys[idx] != null ? new byte[][]{keys[idx], values[idx]} : null;
+        return page.getEntry(idx);
     }
 
     @Override
     public boolean isAlmostFull(long capacity) {
         // we can cache this value, but again for speed and simplicity it does not matter for in-memory implementation
-        return numKeys == PAGE_SIZE - 1;
+        return page.isAlmostFull(capacity);
     }
 
     @Override
@@ -76,34 +44,17 @@ public class InMemoryBTreeNode implements BTreeNode {
         if (node.isLeaf()) {
             throw new UnsupportedOperationException("Cannot copy children from a leaf node.");
         }
-        this.keys = new byte[PAGE_SIZE][];
-        this.children = new long[PAGE_SIZE + 1];
-        Arrays.fill(this.children, -1);
-        this.numKeys = endIdx - startIdx;
-
-        System.arraycopy(((InMemoryBTreeNode) node).keys, startIdx, keys, 0, endIdx - startIdx);
-        System.arraycopy(((InMemoryBTreeNode) node).children, startIdx, children, 0, endIdx - startIdx + 1);
+        page.copyChildren(node.page(), startIdx, endIdx);
     }
 
     @Override
     public void addChildren(byte[] key, long leftPageId, long rightPageId) {
-        int idx = searchKeyIdx(key);
-        System.arraycopy(keys, idx, keys, idx + 1, numKeys - idx);
-        System.arraycopy(children, idx, children, idx + 1, numKeys - idx + 1);
-        keys[idx] = key;
-        children[idx] = leftPageId;
-        children[idx + 1] = rightPageId;
-        numKeys++;
+        page.addChild(key, leftPageId, rightPageId);
     }
 
     @Override
     public void replaceChild(long childId, long newId) {
-        for (int i = 0; i < children.length; i++) {
-            if (children[i] == childId) {
-                children[i] = newId;
-                return;
-            }
-        }
+        page.replaceChild(childId, newId);
     }
 
     @Override
@@ -111,59 +62,51 @@ public class InMemoryBTreeNode implements BTreeNode {
         if (isLeaf()) {
             throw new UnsupportedOperationException("Leaf nodes do not have children.");
         }
-        int idx = searchKeyIdx(key);
-        if (idx < numKeys && COMPARATOR.compare(keys[idx], key) == 0) {
-            return children[idx + 1];
-        }
-        return children[idx];
+        return page.getChild(key);
     }
 
-    protected int searchKeyIdx(byte[] key) {
-        // todo replace with binary search
-        int idx = 0;
-        while (idx < numKeys && keys[idx] != null && COMPARATOR.compare(keys[idx], key) < 0) {
-            idx++;
-        }
-        return idx;
-    }
 
     @Override
     public int numKeys() {
-        return numKeys;
+        return page.getEntryCount();
     }
 
     @Override
     public boolean isLeaf() {
-        return leaf;
+        return page.isLeaf();
     }
 
     @Override
     public void copy(BTreeNode node) {
-        this.numKeys = node.numKeys();
-        this.keys = Arrays.copyOf(((InMemoryBTreeNode) node).keys, PAGE_SIZE);
-        this.values = Arrays.copyOf(((InMemoryBTreeNode) node).values, PAGE_SIZE);
-        this.children = Arrays.copyOf(((InMemoryBTreeNode) node).children, PAGE_SIZE + 1);
+        page.copy(node.page());
+    }
+
+    @Override
+    public Page page() {
+        return page;
     }
 
     @Override
     public long[] childrenDebugTODOREMOVE() {
-        return children;
+        return page.childrenDbugTODOREMOVE();
     }
 
     @Override
     public String toString() {
         return "InMemoryBTreeNode{" +
-                "id=" + id +
-                ", l=" + leaf +
+                "id=" + page.pageId() +
+                ", l=" + page.isLeaf() +
                 ", data=" + dataToString() +
-                ", children=" + Arrays.toString(children) +
+                ", children=" + Arrays.toString(childrenDebugTODOREMOVE()) +
                 '}';
     }
 
     private String dataToString() {
         StringBuilder result = new StringBuilder();
-        for (int i = 0; i < keys.length; i++) {
-            result.append("{key[").append(i).append("]=").append(keys[i] == null ? null : new String(keys[i]));
+        int size = page.getEntryCount();
+        for (int i = 0; i < size; i++) {
+            byte[][] e = page.getEntry(i);
+            result.append("{key[").append(i).append("]=").append(e[0] == null ? null : new String(e[1]));
         }
         return result.toString();
     }

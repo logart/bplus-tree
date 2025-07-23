@@ -3,6 +3,7 @@ package org.logart;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.logart.node.MapBasedNodeManager;
+import org.logart.page.MapBasedPageManager;
 
 import java.util.*;
 
@@ -14,7 +15,7 @@ public class InMemoryBPlusTreeTest {
 
     @BeforeEach
     void setUp() {
-        tree = new DefaultBPlusTree(new MapBasedNodeManager());
+        tree = new DefaultBPlusTree(new MapBasedNodeManager(new MapBasedPageManager()));
     }
 
     @Test

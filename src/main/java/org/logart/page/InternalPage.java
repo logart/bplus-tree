@@ -74,6 +74,11 @@ public class InternalPage implements Page {
         throw new UnsupportedOperationException("InternalPage does not support put operation directly. Use addChild instead.");
     }
 
+    @Override
+    public byte[] get(byte[] key) {
+        throw new UnsupportedOperationException("InternalPage does not support put operation directly. Use getChild instead.");
+    }
+
     public byte[][] getEntry(byte[] key) {
         InternalPageLoc pageLoc = searchKeyIdx(key);
         if (pageLoc.idx() == -1 || pageLoc.k() == null) {
@@ -145,6 +150,21 @@ public class InternalPage implements Page {
         buffer.put(page.buffer());
     }
 
+    @Override
+    public void copyChildren(Page page, int startIdx, int endIdx) {
+
+    }
+
+    @Override
+    public void replaceChild(long childId, long newId) {
+
+    }
+
+    @Override
+    public long[] childrenDbugTODOREMOVE() {
+        return new long[0];
+    }
+
     public long getChild(byte[] key) {
         InternalPageLoc pageLoc = searchKeyIdx(key);
         if (pageLoc.idx() < getEntryCount() && pageLoc.cmp() >= 0) {
@@ -157,7 +177,8 @@ public class InternalPage implements Page {
         return buffer.getLong(HEADER_SIZE + SLOT_CHILD_POINTER + (SLOT_SIZE * (idx - 1)) + SLOT_KEY_SIZE);
     }
 
-    public boolean addChild(byte[] key, int left, int right) {
+    @Override
+    public boolean addChild(byte[] key, long left, long right) {
         int entryCount = getEntryCount();
         InternalPageLoc pageLoc = searchKeyIdx(key);
 

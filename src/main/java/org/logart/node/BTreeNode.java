@@ -1,5 +1,7 @@
 package org.logart.node;
 
+import org.logart.page.Page;
+
 public interface BTreeNode {
     long id();
 
@@ -26,4 +28,6 @@ public interface BTreeNode {
     void copy(BTreeNode node);
 
     long[] childrenDebugTODOREMOVE();
+
+    Page page();
 }

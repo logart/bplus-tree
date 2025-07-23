@@ -123,6 +123,11 @@ public class LeafPage implements Page {
         return true;
     }
 
+    @Override
+    public byte[] get(byte[] key) {
+        return new byte[0];
+    }
+
     public byte[][] getEntry(byte[] key) {
         LeafPageLoc pageLoc = searchKeyIdx(key);
         if (pageLoc.idx() == -1 || pageLoc.k() == null) {
@@ -195,7 +200,7 @@ public class LeafPage implements Page {
     }
 
     @Override
-    public boolean addChild(byte[] key, int left, int right) {
+    public boolean addChild(byte[] key, long left, long right) {
         throw new UnsupportedOperationException("Leaf pages do not have children.");
     }
 
@@ -214,5 +219,20 @@ public class LeafPage implements Page {
         page.buffer().rewind();
         buffer.put(page.buffer());
         buffer.putLong(PAGE_ID_OFFSET, currentId); // Ensure the page ID remains the same
+    }
+
+    @Override
+    public void copyChildren(Page page, int startIdx, int endIdx) {
+
+    }
+
+    @Override
+    public void replaceChild(long childId, long newId) {
+
+    }
+
+    @Override
+    public long[] childrenDbugTODOREMOVE() {
+        return new long[0];
     }
 }

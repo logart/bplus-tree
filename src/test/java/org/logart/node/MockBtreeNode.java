@@ -1,5 +1,7 @@
 package org.logart.node;
 
+import org.logart.page.Page;
+
 public class MockBtreeNode implements BTreeNode {
     @Override
     public long id() {
@@ -59,6 +61,11 @@ public class MockBtreeNode implements BTreeNode {
     @Override
     public void copy(BTreeNode node) {
 
+    }
+
+    @Override
+    public Page page() {
+        return null;
     }
 
     @Override

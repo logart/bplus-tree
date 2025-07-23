@@ -4,6 +4,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.logart.Versioned;
+import org.logart.page.MapBasedPageManager;
+import org.logart.page.PageManager;
 
 import java.util.List;
 import java.util.Random;
@@ -14,13 +16,14 @@ import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class NodeManagerConcurrencyTest {
-
+public class MapBasedNodeManagerConcurrencyTest {
+    private PageManager pageManager;
     private NodeManager nodeManager;
 
     @BeforeEach
     public void setUp() {
-        nodeManager = new MapBasedNodeManager();
+        pageManager = new MapBasedPageManager();
+        nodeManager = new MapBasedNodeManager(pageManager);
     }
 
     @AfterEach
@@ -77,8 +80,8 @@ public class NodeManagerConcurrencyTest {
             assertTrue(errors.isEmpty(), "Some threads encountered exceptions: " + errors);
 
             // All nodes that were freed should no longer be in allocatedNodes
-            Set<Long> allocatedNodes = ((MapBasedNodeManager) nodeManager).getAllAllocatedNodeIds();
-            Set<Long> freedNodes = ((MapBasedNodeManager) nodeManager).getFreedNodeIds();
+            Set<Long> allocatedNodes = ((MapBasedPageManager) pageManager).getAllAllocatedPageIds();
+            Set<Long> freedNodes = ((MapBasedPageManager)pageManager).getFreedNodeIds();
             // 1 node is allocated in the constructor
             assertEquals(threads * opsPerThread + 1, allocatedNodes.size() + freedNodes.size());
             for (Long id : freedNodes) {
@@ -154,7 +157,7 @@ public class NodeManagerConcurrencyTest {
         // get locks the version, this is long read, still in progress
         Versioned<BTreeNode> v1 = nodeManager.lockVersion();
         // put modifies at v2
-        // put locks the version, this is a second put, after previous already modified the tree
+        // put locks the version; this is a second put, after previous already modified the tree
         Versioned<BTreeNode> v2 = nodeManager.lockVersion();
 
         // put copied the node and want to free it

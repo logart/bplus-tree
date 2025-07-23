@@ -1,5 +1,7 @@
 package org.logart.page;
 
+import org.logart.node.BTreeNode;
+
 import java.nio.ByteBuffer;
 
 public interface Page {
@@ -9,6 +11,8 @@ public interface Page {
     int getEntryCount();
 
     boolean put(byte[] key, byte[] value);
+
+    byte[] get(byte[] key);
 
     boolean isLeaf();
 
@@ -20,9 +24,15 @@ public interface Page {
 
     long getChild(byte[] key);
 
-    boolean addChild(byte[] key, int left, int right);
-
-    ByteBuffer buffer();
+    boolean addChild(byte[] key, long left, long right);
 
     void copy(Page page);
+
+    void copyChildren(Page page, int startIdx, int endIdx);
+
+    void replaceChild(long childId, long newId);
+
+    long[] childrenDbugTODOREMOVE();
+
+    ByteBuffer buffer();
 }
