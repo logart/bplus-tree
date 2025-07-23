@@ -7,6 +7,7 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Comparator;
 
+import static org.logart.page.mmap.PageFactory.IS_DELETED;
 import static org.logart.page.mmap.PageFactory.LEAF_FLAG;
 
 public class InternalPage implements Page {
@@ -21,7 +22,7 @@ public class InternalPage implements Page {
     private static final int SLOT_KEY_SIZE = 2;
     private static final int SLOT_CHILD_POINTER = 8;
     private static final int SLOT_SIZE = SLOT_KEY_SIZE + SLOT_CHILD_POINTER;               // each slot is a 2-byte pointer to payload
-    private static final int FULL_FLAG = 0b0100_0000;
+    public static final int FULL_FLAG = 0b0100_0000;
 
     private final ByteBuffer buffer;
 
@@ -34,7 +35,9 @@ public class InternalPage implements Page {
          * page format:
          * Page metadata:       1 byte
          *      Page Type	    1 bit	Leaf or internal
-         *      Padding 	    7 bits	Reserved for future use
+         *      Full flag	    1 bit	Indicates if the page is full
+         *      Is deleted 	    1 bit	Indicates if the page is deleted
+         *      Padding 	    5 bits	Reserved for future use
          * Page ID	            8 bytes	This page's ID
          * Number of entries	2 bytes	Slot count
          * Free space offset	2 bytes	Start of free space
@@ -52,6 +55,10 @@ public class InternalPage implements Page {
         buf.putShort(ENTRY_COUNT_OFFSET, (short) 0);
         buf.putShort(FREE_SPACE_OFFSET, (short) PAGE_SIZE);
         return new InternalPage(buf);
+    }
+
+    public static Page readPage(ByteBuffer buffer) {
+        return new InternalPage(buffer);
     }
 
     public int getEntryCount() {
@@ -129,6 +136,18 @@ public class InternalPage implements Page {
         // we compare with 128 instead of 1 because 0b1000_0000 does not fit in a byte
         // and the whole expression is converted to an int by java
         return (pageMeta & LEAF_FLAG) == LEAF_FLAG;
+    }
+
+    @Override
+    public boolean isDeleted() {
+        byte pageMeta = buffer.get(0);
+        return (pageMeta & IS_DELETED) == IS_DELETED;
+    }
+
+    @Override
+    public void markDeleted() {
+        byte pageMeta = buffer.get(0);
+        buffer.put(0, (byte) (pageMeta | IS_DELETED));
     }
 
     @Override

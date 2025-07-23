@@ -22,6 +22,10 @@ public interface Page {
 
     boolean isAlmostFull(long capacity);
 
+    boolean isDeleted();
+
+    void markDeleted();
+
     long getChild(byte[] key);
 
     boolean addChild(byte[] key, long left, long right);

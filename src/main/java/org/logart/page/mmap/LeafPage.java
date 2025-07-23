@@ -8,6 +8,8 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Comparator;
 
+import static org.logart.page.mmap.InternalPage.FULL_FLAG;
+import static org.logart.page.mmap.PageFactory.IS_DELETED;
 import static org.logart.page.mmap.PageFactory.LEAF_FLAG;
 
 public class LeafPage implements Page {
@@ -20,7 +22,6 @@ public class LeafPage implements Page {
     private static final int HEADER_SIZE = 32;
     private static final int ENTRY_COUNT_OFFSET = 9;      // after page type + page id
     private static final int SLOT_SIZE = 2;               // each slot is a 2-byte pointer to payload
-    private static final int FULL_FLAG = 0b0100_0000;
 
     private final ByteBuffer buffer;
 
@@ -50,6 +51,10 @@ public class LeafPage implements Page {
         buf.putShort(ENTRY_COUNT_OFFSET, (short) 0);
         buf.putShort(FREE_SPACE_OFFSET, (short) PAGE_SIZE);
         return new LeafPage(buf);
+    }
+
+    public static Page readPage(ByteBuffer buffer) {
+        return new LeafPage(buffer);
     }
 
     public int getEntryCount() {
@@ -194,6 +199,18 @@ public class LeafPage implements Page {
         byte pageMeta = buffer.get(0);
         return (pageMeta & FULL_FLAG) == FULL_FLAG
                 || (getFreeSpaceOffset() - HEADER_SIZE) < capacity; // Check if free space is less than capacity
+    }
+
+    @Override
+    public boolean isDeleted() {
+        byte pageMeta = buffer.get(0);
+        return (pageMeta & IS_DELETED) == IS_DELETED;
+    }
+
+    @Override
+    public void markDeleted() {
+        byte pageMeta = buffer.get(0);
+        buffer.put(0, (byte) (pageMeta | IS_DELETED));
     }
 
     @Override

@@ -6,16 +6,16 @@ import java.nio.ByteBuffer;
 
 public class PageFactory {
     public static final int LEAF_FLAG = 0b1000_0000;
+    public static final int IS_DELETED = 0b0010_0000;
 
     public static Page read(ByteBuffer buffer) {
         buffer.rewind();
         byte pageMeta = buffer.get(0);
-        long pageId = buffer.getLong(1);
 
         if ((pageMeta & LEAF_FLAG) == LEAF_FLAG) {
-            return LeafPage.newPage(pageId, buffer);
+            return LeafPage.readPage(buffer);
         } else {
-            return InternalPage.newPage(pageId, buffer);
+            return InternalPage.readPage(buffer);
         }
     }
 }

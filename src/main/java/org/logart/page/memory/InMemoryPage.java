@@ -19,6 +19,7 @@ public class InMemoryPage implements Page {
     private long[] children;
 
     private int numKeys = 0;
+    private boolean deleted;
 
     public InMemoryPage(long id, boolean leaf) {
         this.id = id;
@@ -86,6 +87,16 @@ public class InMemoryPage implements Page {
     @Override
     public boolean isAlmostFull(long capacity) {
         return numKeys == PAGE_SIZE - 1;
+    }
+
+    @Override
+    public boolean isDeleted() {
+        return deleted;
+    }
+
+    @Override
+    public void markDeleted() {
+        this.deleted = true;
     }
 
     @Override

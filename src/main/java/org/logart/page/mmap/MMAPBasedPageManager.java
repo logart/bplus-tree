@@ -13,11 +13,14 @@ import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.Objects;
 import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class MMAPBasedPageManager implements PageManager {
     private final FileChannel channel;
     private final int pageSize;
+    private final Set<Long> pages = ConcurrentHashMap.newKeySet();
     private final Queue<Long> freePagesIds = new ConcurrentLinkedUniqueQueue<>();
     private final AtomicLong currentPageId;
 
@@ -47,6 +50,7 @@ public class MMAPBasedPageManager implements PageManager {
             throw new UncheckedIOException(e);
         }
         Page page = InternalPage.newPage(pageId, emptyPage);
+        pages.add(pageId);
         writePage(pageId, page);
         return page;
     }
@@ -66,6 +70,7 @@ public class MMAPBasedPageManager implements PageManager {
             throw new UncheckedIOException(e);
         }
         Page page = LeafPage.newPage(pageId, emptyPage);
+        pages.add(pageId);
         writePage(pageId, page);
         return page;
     }
@@ -80,7 +85,11 @@ public class MMAPBasedPageManager implements PageManager {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        return PageFactory.read(buffer);
+        Page read = PageFactory.read(buffer);
+        if (read.isDeleted()) {
+            throw new IllegalStateException("Page with id " + pageId + " is deleted and cannot be read.");
+        }
+        return read;
     }
 
     /**
@@ -101,7 +110,12 @@ public class MMAPBasedPageManager implements PageManager {
 
     @Override
     public void freePage(long pageId) {
-        freePagesIds.offer(pageId);
+        if (pages.remove(pageId)) {
+            Page page = readPage(pageId);
+            page.markDeleted();
+            writePage(pageId, page);
+            freePagesIds.offer(pageId);
+        }
     }
 
     public long getAllocatedPageCount() {
@@ -116,12 +130,11 @@ public class MMAPBasedPageManager implements PageManager {
         }
     }
 
-    private void writePage(long position, ByteBuffer buffer) {
-        try {
-            assert buffer.capacity() == pageSize;
-            assert channel.write(buffer, position) == pageSize : "Failed to write full page";
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed to write page at position " + position, e);
-        }
+    public Set<Long> getAllAllocatedNodeIds() {
+        return pages;
+    }
+
+    public Set<Long> getFreedNodeIds() {
+        return Set.copyOf(freePagesIds);
     }
 }
