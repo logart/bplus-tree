@@ -5,11 +5,11 @@ import org.logart.page.Page;
 import java.util.Arrays;
 import java.util.Comparator;
 
-public class InMemoryBTreeNode implements BTreeNode {
+public class DefaultBTreeNode implements BTreeNode {
     private static final Comparator<byte[]> COMPARATOR = Arrays::compareUnsigned;
     private final Page page;
 
-    public InMemoryBTreeNode(Page page) {
+    public DefaultBTreeNode(Page page) {
         this.page = page;
     }
 

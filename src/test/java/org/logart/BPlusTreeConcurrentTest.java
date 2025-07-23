@@ -1,7 +1,7 @@
 package org.logart;
 
 import org.junit.jupiter.api.Test;
-import org.logart.node.MapBasedNodeManager;
+import org.logart.node.DefaultNodeManager;
 import org.logart.page.MapBasedPageManager;
 
 import java.nio.charset.StandardCharsets;
@@ -26,7 +26,7 @@ public class BPlusTreeConcurrentTest {
             // at some point in the past
             ConcurrentMap<String, Set<byte[]>> expectedMultiMap = new ConcurrentHashMap<>();
 
-            BPlusTree tree = new DefaultBPlusTree(new MapBasedNodeManager(new MapBasedPageManager()));
+            BPlusTree tree = new DefaultBPlusTree(new DefaultNodeManager(new MapBasedPageManager()));
 
             CountDownLatch latch = new CountDownLatch(NUM_THREADS);
 

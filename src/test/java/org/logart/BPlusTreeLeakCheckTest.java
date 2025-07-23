@@ -1,7 +1,7 @@
 package org.logart;
 
 import org.junit.jupiter.api.Test;
-import org.logart.node.MapBasedNodeManager;
+import org.logart.node.DefaultNodeManager;
 import org.logart.node.NodeManager;
 import org.logart.page.MapBasedPageManager;
 
@@ -14,7 +14,7 @@ public class BPlusTreeLeakCheckTest {
     @Test
     public void testNoLeakedPagesAfterCopyOnWrite() {
         MapBasedPageManager pageManager = new MapBasedPageManager();
-        NodeManager nodeManager = new MapBasedNodeManager(pageManager);
+        NodeManager nodeManager = new DefaultNodeManager(pageManager);
         BPlusTree tree = new DefaultBPlusTree(nodeManager);
 
         int total = 100;

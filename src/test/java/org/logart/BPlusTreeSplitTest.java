@@ -2,7 +2,7 @@ package org.logart;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.logart.node.MapBasedNodeManager;
+import org.logart.node.DefaultNodeManager;
 import org.logart.page.MapBasedPageManager;
 
 import java.nio.charset.StandardCharsets;
@@ -18,7 +18,7 @@ public class BPlusTreeSplitTest {
 
     @BeforeEach
     void setUp() {
-        tree = new DefaultBPlusTree(new MapBasedNodeManager(new MapBasedPageManager()));
+        tree = new DefaultBPlusTree(new DefaultNodeManager(new MapBasedPageManager()));
     }
 
     @Test

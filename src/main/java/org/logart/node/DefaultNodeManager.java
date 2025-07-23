@@ -7,19 +7,18 @@ import org.logart.page.PageManager;
 
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-public abstract class AbstractNodeManager implements NodeManager {
+public class DefaultNodeManager implements NodeManager {
     private final PageManager pageManager;
     private final VersionedRefCounter<BTreeNode> versionRefCounter;
 
     private final ConcurrentMap<Long, BTreeNode> nodes = new ConcurrentHashMap<>();
     private final ConcurrentSkipListSet<PageAndVersion> freeCandidates = new ConcurrentSkipListSet<>();
 
-    public AbstractNodeManager(PageManager pageManager) {
+    public DefaultNodeManager(PageManager pageManager) {
         this.pageManager = pageManager;
         this.versionRefCounter = new VersionedRefCounter<>(this::allocateLeafNode); // start with an empty node
     }
@@ -41,7 +40,7 @@ public abstract class AbstractNodeManager implements NodeManager {
         } else {
             page = pageManager.allocatePage();
         }
-        BTreeNode result = allocateNodeBackedByPage(page);
+        BTreeNode result = new DefaultBTreeNode(page);
         nodes.put(result.id(), result);
         return result;
     }
@@ -53,7 +52,7 @@ public abstract class AbstractNodeManager implements NodeManager {
         if (page == null) { // the page is deleted and could not be read
             return null;
         }
-        BTreeNode readNode = allocateNodeBackedByPage(page);
+        BTreeNode readNode = new DefaultBTreeNode(page);
         nodes.put(nodeId, readNode);
         return readNode;
     }
@@ -131,8 +130,6 @@ public abstract class AbstractNodeManager implements NodeManager {
     public VersionedRefCounter<BTreeNode> refCounter() {
         return versionRefCounter;
     }
-
-    protected abstract BTreeNode allocateNodeBackedByPage(Page page);
 
     private record PageAndVersion(long nodeId,
                                   long version) implements Comparable<PageAndVersion> {

@@ -22,5 +22,5 @@ public interface NodeManager {
 
     void close();
 
-    VersionedRefCounter refCounter();
+    VersionedRefCounter<BTreeNode> refCounter();
 }

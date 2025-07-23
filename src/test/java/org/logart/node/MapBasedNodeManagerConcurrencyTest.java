@@ -23,7 +23,7 @@ public class MapBasedNodeManagerConcurrencyTest {
     @BeforeEach
     public void setUp() {
         pageManager = new MapBasedPageManager();
-        nodeManager = new MapBasedNodeManager(pageManager);
+        nodeManager = new DefaultNodeManager(pageManager);
     }
 
     @AfterEach
