@@ -1,6 +1,8 @@
-package org.logart.page;
+package org.logart.page.mmap;
 
 import org.logart.ConcurrentLinkedUniqueQueue;
+import org.logart.page.Page;
+import org.logart.page.PageManager;
 
 import java.io.File;
 import java.io.IOException;

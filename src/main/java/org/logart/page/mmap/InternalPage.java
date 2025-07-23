@@ -1,11 +1,13 @@
-package org.logart.page;
+package org.logart.page.mmap;
+
+import org.logart.page.Page;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Comparator;
 
-import static org.logart.page.PageFactory.LEAF_FLAG;
+import static org.logart.page.mmap.PageFactory.LEAF_FLAG;
 
 public class InternalPage implements Page {
     public static final int PAGE_SIZE = 4096;

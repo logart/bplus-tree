@@ -3,8 +3,8 @@ package org.logart;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.logart.page.InternalPage;
-import org.logart.page.LeafPage;
+import org.logart.page.mmap.InternalPage;
+import org.logart.page.mmap.LeafPage;
 import org.logart.page.Page;
 
 import java.io.RandomAccessFile;

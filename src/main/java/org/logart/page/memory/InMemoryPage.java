@@ -1,4 +1,6 @@
-package org.logart.page;
+package org.logart.page.memory;
+
+import org.logart.page.Page;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;

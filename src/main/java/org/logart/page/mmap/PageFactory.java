@@ -1,4 +1,6 @@
-package org.logart.page;
+package org.logart.page.mmap;
+
+import org.logart.page.Page;
 
 import java.nio.ByteBuffer;
 

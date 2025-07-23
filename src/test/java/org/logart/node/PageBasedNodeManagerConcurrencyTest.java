@@ -4,7 +4,7 @@
 //import org.junit.jupiter.api.BeforeEach;
 //import org.junit.jupiter.api.Test;
 //import org.logart.Versioned;
-//import org.logart.page.MMAPBasedPageManager;
+//import org.logart.page.mmap.MMAPBasedPageManager;
 //
 //import java.io.IOException;
 //import java.nio.file.Files;

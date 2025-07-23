@@ -4,7 +4,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.logart.Versioned;
-import org.logart.page.MapBasedPageManager;
+import org.logart.page.memory.MapBasedPageManager;
 import org.logart.page.PageManager;
 
 import java.util.List;

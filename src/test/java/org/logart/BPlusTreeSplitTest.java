@@ -3,7 +3,7 @@ package org.logart;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.logart.node.DefaultNodeManager;
-import org.logart.page.MapBasedPageManager;
+import org.logart.page.memory.MapBasedPageManager;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;

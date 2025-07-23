@@ -4,7 +4,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.logart.page.MMAPBasedPageManager;
+import org.logart.page.mmap.MMAPBasedPageManager;
 import org.logart.page.Page;
 import org.logart.page.PageManager;
 
@@ -18,8 +18,8 @@ import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.logart.page.LeafPage.FREE_SPACE_OFFSET;
-import static org.logart.page.PageFactory.LEAF_FLAG;
+import static org.logart.page.mmap.LeafPage.FREE_SPACE_OFFSET;
+import static org.logart.page.mmap.PageFactory.LEAF_FLAG;
 
 public class PageManagerTest {
 

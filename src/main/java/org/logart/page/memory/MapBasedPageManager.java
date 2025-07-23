@@ -1,4 +1,7 @@
-package org.logart.page;
+package org.logart.page.memory;
+
+import org.logart.page.Page;
+import org.logart.page.PageManager;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
