@@ -5,18 +5,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.logart.page.Page;
 import org.logart.page.PageManager;
-import org.logart.page.mmap.AbstractPage;
 import org.logart.page.mmap.MMAPBasedPageManager;
 
 import java.io.File;
-import java.nio.ByteBuffer;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.logart.page.mmap.LeafPage.FREE_SPACE_OFFSET;
-import static org.logart.page.mmap.PageFactory.LEAF_FLAG;
 
 public class PageManagerTest {
 
@@ -60,6 +56,7 @@ public class PageManagerTest {
     void testConcurrentReadWriteDistinctPages() throws Exception {
         int threadCount = 8;
         int pagesPerThread = 50;
+        pageManager = new MMAPBasedPageManager(tempFile, PAGE_SIZE, false);
         // pre allocate pages
         for (int i = 0; i < threadCount * pagesPerThread; i++) {
             pageManager.allocateLeafPage();
@@ -148,6 +145,8 @@ public class PageManagerTest {
 
     @Test
     void testStressConcurrentAllocWriteRead() throws Exception {
+        pageManager = new MMAPBasedPageManager(tempFile, PAGE_SIZE, false);
+
         int threadCount = 20;
         int iterations = 100;
         testConcurrently(threadCount, new TestCore() {

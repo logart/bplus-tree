@@ -1,12 +1,15 @@
 package org.logart.page.mmap;
 
 import org.junit.jupiter.api.Test;
+import org.logart.page.Page;
 
 import java.nio.ByteBuffer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.logart.page.mmap.AbstractPage.HEADER_SIZE;
-import static org.logart.page.mmap.AbstractPage.PAGE_SIZE;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.logart.page.mmap.AbstractPage.*;
+import static org.logart.page.mmap.InternalPage.SLOT_CHILD_POINTER;
+import static org.logart.page.mmap.InternalPage.SLOT_SIZE;
 
 public class InternalPageTest {
     @Test
@@ -110,5 +113,81 @@ public class InternalPageTest {
 
     private byte[] key(int i) {
         return ("testKey" + i).getBytes();
+    }
+
+
+    @Test
+    public void shouldInserKeyInTheMiddle() {
+        ByteBuffer originalBuffer = ByteBuffer.allocate(PAGE_SIZE);
+        InternalPage page = (InternalPage) InternalPage.newPage(1, originalBuffer);
+        byte[] leftKey = "k1".getBytes();
+        page.addChild(leftKey, 1, 2);
+        // leftKey
+        // 1, 2
+        assertEquals(1, originalBuffer.getLong(HEADER_SIZE)); // 0
+        assertEquals(2, originalBuffer.getLong(HEADER_SIZE + SLOT_SIZE)); // 1
+        byte[] rightKey = "k3".getBytes();
+        page.addChild(rightKey, 3, 4);
+        // leftKey, rightKey
+        // 1, 3, 4
+        assertEquals(1, originalBuffer.getLong(HEADER_SIZE)); // 0
+        assertEquals(3, originalBuffer.getLong(HEADER_SIZE + SLOT_SIZE)); // 1
+        assertEquals(4, originalBuffer.getLong(HEADER_SIZE + SLOT_SIZE * 2)); // 3
+        byte[] midKey = "k2".getBytes();
+        page.addChild(midKey, 5, 6);
+        // leftKey, midKey, rightKey
+        // 1, 5, 6, 4
+        assertEquals(1, originalBuffer.getLong(HEADER_SIZE)); // 0
+        assertEquals(5, originalBuffer.getLong(HEADER_SIZE + SLOT_SIZE)); // 1
+        assertEquals(6, originalBuffer.getLong(HEADER_SIZE + SLOT_SIZE * 2)); // 2
+        assertEquals(4, originalBuffer.getLong(HEADER_SIZE + SLOT_SIZE * 3)); // 3
+
+    }
+
+    @Test
+    void shouldNotOverwriteSlotWithWithDataIfPageIsPacked100Percent() {
+        ByteBuffer originalBuffer = ByteBuffer.allocate(PAGE_SIZE);
+        InternalPage page = (InternalPage) InternalPage.newPage(1, originalBuffer);
+
+        for (int i = 0; i < 1000; i++) {
+            int j = 0;
+            String k = "k" + i;
+            try {
+                while (page.addChild((k + j).getBytes(), 1, 1)) {
+                    j++;
+                    assertTrue(sanityCheck(page));
+                }
+                assertTrue(sanityCheck(page));
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to add key: " + i + " - " + j + " - " + k + " with value: ", e);
+            }
+        }
+    }
+
+    private boolean sanityCheck(Page checkedPage) {
+        try {
+            int cnt = checkedPage.getEntryCount();
+            for (int i = 0; i < cnt; i++) {
+                InternalPage internalPage = (InternalPage) checkedPage;
+                ByteBuffer buffer = internalPage.buffer2();
+                long leftId = buffer.getLong(HEADER_SIZE + (SLOT_SIZE * i));
+                int keyOffset = buffer.getShort(HEADER_SIZE + (SLOT_SIZE * i) + SLOT_CHILD_POINTER);
+                long rightId = buffer.getLong(HEADER_SIZE + SLOT_CHILD_POINTER + (SLOT_SIZE * i) + SLOT_KEY_SIZE);
+
+                short keyDataSize = buffer.getShort(keyOffset);
+                byte[] key = new byte[keyDataSize];
+                buffer.get(keyOffset + 2, key);
+                if (leftId != 1 || rightId != 1) {
+                    throw new IllegalStateException("Child pointers is corrupted: " + leftId + ", " + rightId);
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static boolean isValid(byte[] key) {
+        return new String(key).matches("[a-zA-Z0-9_\\-]+");
     }
 }

@@ -23,8 +23,13 @@ public class MMAPBasedPageManager implements PageManager {
     private final Set<Long> pages = ConcurrentHashMap.newKeySet();
     private final Queue<Long> freePagesIds = new ConcurrentLinkedUniqueQueue<>();
     private final AtomicLong currentPageId;
+    private final boolean sanityCheckEnabled;
 
     public MMAPBasedPageManager(File file, int pageSize) throws IOException {
+        this(file, pageSize, true);
+    }
+
+    public MMAPBasedPageManager(File file, int pageSize, boolean sanityCheckEnabled) throws IOException {
         this.pageSize = pageSize;
         this.channel = FileChannel.open(
                 file.toPath(),
@@ -33,6 +38,7 @@ public class MMAPBasedPageManager implements PageManager {
                 StandardOpenOption.CREATE
         );
         this.currentPageId = new AtomicLong(channel.size() / pageSize);
+        this.sanityCheckEnabled = sanityCheckEnabled;
     }
 
     /**
@@ -49,7 +55,7 @@ public class MMAPBasedPageManager implements PageManager {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        Page page = InternalPage.newPage(pageId, emptyPage);
+        Page page = InternalPage.newPage(pageId, emptyPage, sanityCheckEnabled);
         pages.add(pageId);
         writePage(pageId, page);
         return page;
@@ -69,7 +75,7 @@ public class MMAPBasedPageManager implements PageManager {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        Page page = LeafPage.newPage(pageId, emptyPage);
+        Page page = LeafPage.newPage(pageId, emptyPage, sanityCheckEnabled);
         pages.add(pageId);
         writePage(pageId, page);
         return page;
@@ -85,7 +91,7 @@ public class MMAPBasedPageManager implements PageManager {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        Page read = PageFactory.read(buffer);
+        Page read = PageFactory.read(buffer, sanityCheckEnabled);
         if (read.isDeleted()) {
             throw new IllegalStateException("Page with id " + pageId + " is deleted and cannot be read.");
         }
@@ -98,7 +104,8 @@ public class MMAPBasedPageManager implements PageManager {
     public void writePage(long pageId, Page page) {
         // todo maybe we could just do force() on underlying mmap buffer
         AbstractPage internalPage = (AbstractPage) page;
-        ByteBuffer buffer = internalPage.buffer();
+        ByteBuffer buffer = internalPage.buffer2();
+        internalPage.sanityCheck();
         if (buffer.position() != 0) {
             buffer.rewind();
         }

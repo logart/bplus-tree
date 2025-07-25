@@ -3,9 +3,9 @@ package org.logart;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.logart.page.Page;
 import org.logart.page.mmap.InternalPage;
 import org.logart.page.mmap.LeafPage;
-import org.logart.page.Page;
 
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -30,13 +30,13 @@ public class PageTest {
 
     @Test
     void shouldReadLeafFlag() throws Exception {
-        assertTrue(LeafPage.newPage(0, ByteBuffer.allocate(PAGE_SIZE)).isLeaf());
-        assertFalse(InternalPage.newPage(0, ByteBuffer.allocate(PAGE_SIZE)).isLeaf());
+        assertTrue(LeafPage.newPage(0, ByteBuffer.allocate(PAGE_SIZE), true).isLeaf());
+        assertFalse(InternalPage.newPage(0, ByteBuffer.allocate(PAGE_SIZE), true).isLeaf());
     }
 
     @Test
     void shouldMarkPageAsFull() throws Exception {
-        Page page = LeafPage.newPage(0, ByteBuffer.allocate(PAGE_SIZE));
+        Page page = LeafPage.newPage(0, ByteBuffer.allocate(PAGE_SIZE), true);
         while (page.put("key".getBytes(), "value".getBytes())) {
             // Fill the page
         }

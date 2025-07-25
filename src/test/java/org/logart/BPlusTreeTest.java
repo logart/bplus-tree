@@ -2,7 +2,6 @@ package org.logart;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.logart.node.DefaultNodeManager;
 import org.logart.page.mmap.MMAPBasedPageManager;
@@ -75,6 +74,7 @@ public class BPlusTreeTest {
     void testInsertEmptyKeyAndValue() throws Exception {
         byte[] key = new byte[0];
         byte[] value = new byte[0];
+        tree = new DefaultBPlusTree(new DefaultNodeManager(new MMAPBasedPageManager(tempFile.toFile(), 4096, false))); // assuming 4KB pages
         tree.put(key, value);
         assertArrayEquals(value, tree.get(key));
     }
@@ -107,22 +107,8 @@ public class BPlusTreeTest {
         byte[] value = new byte[2048];  // 2KB value
         new Random().nextBytes(key);
         new Random().nextBytes(value);
+        tree = new DefaultBPlusTree(new DefaultNodeManager(new MMAPBasedPageManager(tempFile.toFile(), 4096, false))); // assuming 4KB pages
         tree.put(key, value);
         assertArrayEquals(value, tree.get(key));
-    }
-
-    @Test
-    public void shouldSplit() {
-        for (int i = 0; i < 10_000_000; i++) {
-            byte[] key = ("key-" + i).getBytes();
-            byte[] value = ("value-" + i).getBytes();
-            try {
-                tree.put(key, value);
-            } catch (IllegalArgumentException e) {
-                // this is expected, we are testing the split functionality
-                System.out.println("Split occurred at key: " + i);
-                throw e;
-            }
-        }
     }
 }

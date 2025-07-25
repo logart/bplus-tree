@@ -7,24 +7,18 @@ import java.nio.ByteBuffer;
 
 public class LeafPage extends AbstractPage implements Page {
     protected static final int SLOT_SIZE = 2;               // each slot is a 2-byte pointer to payload
+    public static final int PAYLOAD_SIZE_FIELD_SIZE = 2;
 
-    public LeafPage(ByteBuffer buffer) {
-        super(buffer);
+    public LeafPage(ByteBuffer buffer, boolean sanityCheckEnabled) {
+        super(buffer, sanityCheckEnabled);
     }
 
     public static Page newPage(long pageId, ByteBuffer buf) {
+        return newPage(pageId, buf, true);
+    }
+
+    public static Page newPage(long pageId, ByteBuffer buf, boolean sanityCheckEnabled) {
         /**
-         * page format:
-         * Page metadata:       1 byte
-         *      Page Type	    1 bit	Leaf or internal
-         *      Padding 	    7 bits	Reserved for future use
-         * Page ID	            8 bytes	This page's ID
-         * Number of entries	2 bytes	Slot count
-         * Free space offset	2 bytes	Start of free space
-         * Right sibling ptr	8 bytes	Only for leaf pages
-         * Parent ptr / unused	8 bytes	Optional
-         * Reserved	~5 bytes	Padding
-         *
          * Slot table:          2 bytes per entry
          * Free space:          variable size
          * Payload:             variable size
@@ -33,47 +27,55 @@ public class LeafPage extends AbstractPage implements Page {
         buf.putLong(PAGE_ID_OFFSET, pageId);
         buf.putShort(ENTRY_COUNT_OFFSET, (short) 0);
         buf.putShort(FREE_SPACE_OFFSET, (short) PAGE_SIZE);
-        return new LeafPage(buf);
+        return new LeafPage(buf, sanityCheckEnabled);
     }
 
-    public static Page readPage(ByteBuffer buffer) {
-        return new LeafPage(buffer);
+    public static Page readPage(ByteBuffer buffer, boolean sanityCheckEnabled) {
+        return new LeafPage(buffer, sanityCheckEnabled);
     }
 
     public boolean put(byte[] key, byte[] value) {
         int entryCount = getEntryCount();
-        PageLoc pageLoc = searchKeyIdx(key);
         int slotOffset = SLOT_SIZE * entryCount + HEADER_SIZE;
 
         int freeSpaceOffset = getFreeSpaceOffset();
-        int payloadSize = 2 + key.length + 2 + value.length;
+        int payloadSize = PAYLOAD_SIZE_FIELD_SIZE + key.length + PAYLOAD_SIZE_FIELD_SIZE + value.length;
 
-        if (slotOffset > freeSpaceOffset - payloadSize) {
+        // we need to reserve space for slot offset too
+        if (isFull() || availableSpace() < payloadSize + SLOT_SIZE) {
             // write info about page is full
-            byte pageMeta = buffer().get(0);
+            byte pageMeta = buffer2().get(0);
+            sanityCheck();
             pageMeta = (byte) (pageMeta | FULL_FLAG);
-            buffer().put(0, pageMeta);
+            buffer2().put(0, pageMeta);
+            sanityCheck();
             return false; // Not enough space
         }
 
         // Write key-value to payload area
         int dataStart = freeSpaceOffset - payloadSize;
         int kvOffset = dataStart;
-        buffer().putShort(kvOffset, (short) key.length);
+        buffer2().putShort(kvOffset, (short) key.length);
+        sanityCheck();
         kvOffset += 2;
-        buffer().put(kvOffset, key);
+        buffer2().put(kvOffset, key);
+        sanityCheck();
         kvOffset += key.length;
-        buffer().putShort(kvOffset, (short) value.length);
+        buffer2().putShort(kvOffset, (short) value.length);
+        sanityCheck();
         kvOffset += 2;
-        buffer().put(kvOffset, value);
+        buffer2().put(kvOffset, value);
+        sanityCheck();
 
         // Write slot
         setFreeSpaceOffset(freeSpaceOffset - payloadSize);
 
+        PageLoc pageLoc = searchKeyIdx(key);
         int idx = pageLoc.idx();
-        if (pageLoc.k() != null && COMPARATOR.compare(pageLoc.k(), key) == 0) {
+        if (pageLoc.k() != null && pageLoc.cmp() == 0) {
             // Key already exists, update value
-            buffer().putShort(HEADER_SIZE + SLOT_SIZE * idx, (short) dataStart);
+            buffer2().putShort(HEADER_SIZE + SLOT_SIZE * idx, (short) dataStart);
+            sanityCheck();
             return true;
         }
         if (idx >= 0 && idx < entryCount) {
@@ -82,17 +84,21 @@ public class LeafPage extends AbstractPage implements Page {
             int end = slotOffset;
             byte[] tmp = new byte[end - start];
             // leave two bytes for the new entry
-            buffer().get(start, tmp);
+            buffer2().get(start, tmp);
+            sanityCheck();
 
-            buffer().putShort(start, (short) dataStart);
-            buffer().put(start + SLOT_SIZE, tmp);
+            buffer2().putShort(start, (short) dataStart);
+            sanityCheck();
+            buffer2().put(start + SLOT_SIZE, tmp);
+            sanityCheck();
         } else {
-            buffer().putShort(slotOffset, (short) dataStart);
+            buffer2().putShort(slotOffset, (short) dataStart);
+            sanityCheck();
         }
 
         // Update header
         setEntryCount(entryCount + 1);
-
+        sanityCheck();
         return true;
     }
 
@@ -109,27 +115,26 @@ public class LeafPage extends AbstractPage implements Page {
         if (index >= entryCount) return null;
 
         int slotOffset = HEADER_SIZE + SLOT_SIZE * index;
-        int kvOffset = Short.toUnsignedInt(buffer().getShort(slotOffset));
+        int kvOffset = Short.toUnsignedInt(buffer2().getShort(slotOffset));
+        sanityCheck();
 
-        int keyLen = Short.toUnsignedInt(buffer().getShort(kvOffset));
+        int keyLen = Short.toUnsignedInt(buffer2().getShort(kvOffset));
+        sanityCheck();
+
         kvOffset += 2;
         byte[] key = new byte[keyLen];
-        buffer().get(kvOffset, key);
+        buffer2().get(kvOffset, key);
+        sanityCheck();
         kvOffset += keyLen;
 
-        int valueLen = Short.toUnsignedInt(buffer().getShort(kvOffset));
+        int valueLen = Short.toUnsignedInt(buffer2().getShort(kvOffset));
+        sanityCheck();
         kvOffset += 2;
         byte[] value = new byte[valueLen];
-        buffer().get(kvOffset, value);
+        buffer2().get(kvOffset, value);
+        sanityCheck();
 
         return new byte[][]{key, value};
-    }
-
-    @Override
-    public boolean isAlmostFull(long capacity) {
-        byte pageMeta = buffer().get(0);
-        return (pageMeta & FULL_FLAG) == FULL_FLAG
-                || (getFreeSpaceOffset() - HEADER_SIZE) < capacity; // Check if free space is less than capacity
     }
 
     @Override
@@ -155,5 +160,48 @@ public class LeafPage extends AbstractPage implements Page {
     @Override
     public long[] childrenDbugTODOREMOVE() {
         throw new UnsupportedOperationException("Leaf pages do not have children.");
+    }
+
+    @Override
+    protected short entrySize() {
+        return SLOT_SIZE;
+    }
+
+    @Override
+    protected short padding() {
+        // no padding for leaf pages
+        return 0;
+    }
+
+    @Override
+    protected int internalOverhead() {
+        return PAYLOAD_SIZE_FIELD_SIZE * 2;// one for the key and one for the value
+    }
+
+    @Override
+    protected Exception sanityCheck() {
+        try {
+            int cnt = getEntryCount();
+            for (int i = 0; i < cnt; i++) {
+                ByteBuffer buffer = buffer(true);
+                short dataStart = buffer.getShort(HEADER_SIZE + (SLOT_SIZE * i));
+                short kSize = buffer.getShort(dataStart);
+                byte[] key = new byte[kSize];
+                buffer.get(dataStart + PAYLOAD_SIZE_FIELD_SIZE, key);
+                short vSize = buffer.getShort(dataStart + PAYLOAD_SIZE_FIELD_SIZE + key.length);
+                byte[] value = new byte[vSize];
+                buffer.get(dataStart + PAYLOAD_SIZE_FIELD_SIZE + kSize + PAYLOAD_SIZE_FIELD_SIZE, value);
+                if (!isValid(key) || !isValid(value)) {
+                    throw new IllegalStateException("Invalid entry at index " + i + " in LeafPage with ID: " + pageId());
+                }
+            }
+            return null;
+        } catch (Exception e) {
+            return e;
+        }
+    }
+
+    private static boolean isValid(byte[] key) {
+        return new String(key).matches("[a-zA-Z0-9_\\-]+");
     }
 }
