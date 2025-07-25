@@ -19,8 +19,6 @@ public abstract class AbstractPage implements Page {
     protected static final int PAGE_ID_OFFSET = 1;
     protected static final int ENTRY_COUNT_OFFSET = 9;      // after page type + page id
     protected static final int SLOT_KEY_SIZE = 2;
-    protected static final int SLOT_CHILD_POINTER = 8;
-    protected static final int SLOT_SIZE = SLOT_KEY_SIZE + SLOT_CHILD_POINTER;               // each slot is a 2-byte pointer to payload
 
     public static final int FULL_FLAG = 0b0100_0000;
 
@@ -104,116 +102,17 @@ public abstract class AbstractPage implements Page {
         return buffer.getLong(PAGE_ID_OFFSET);
     }
 
-    public ByteBuffer buffer() {
-        return buffer;
-    }
-
     @Override
     public void copy(Page page) {
+        AbstractPage internalPage = (AbstractPage) page; // Ensure we are working with the same type
         long currentId = pageId();
-        page.buffer().rewind();
+        internalPage.buffer().rewind();
         buffer.rewind();
-        buffer.put(page.buffer());
+        buffer.put(internalPage.buffer());
         buffer.putLong(PAGE_ID_OFFSET, currentId); // Ensure the page ID remains the same
     }
 
-    @Override
-    public void copyChildren(Page page, int startIdx, int endIdx) {
-        throw new UnsupportedOperationException("TODO implement");
-    }
-
-    @Override
-    public void replaceChild(long childId, long newId) {
-        for (int i = 0; i < getEntryCount(); i++) {
-            long child = getChild(i);
-            if (child == childId) {
-                buffer.putLong(HEADER_SIZE + SLOT_CHILD_POINTER + (SLOT_SIZE * i) + SLOT_KEY_SIZE, newId);
-                return;
-            }
-        }
-    }
-
-    @Override
-    public long[] childrenDbugTODOREMOVE() {
-        return new long[0];
-    }
-
-    public long getChild(byte[] key) {
-        PageLoc pageLoc = searchKeyIdx(key);
-        if (pageLoc.idx() < getEntryCount() && pageLoc.cmp() >= 0) {
-            return getChild(pageLoc.idx() + 1);
-        }
-        return getChild(pageLoc.idx());
-    }
-
-    private long getChild(int idx) {
-        return buffer.getLong(HEADER_SIZE + SLOT_CHILD_POINTER + (SLOT_SIZE * (idx - 1)) + SLOT_KEY_SIZE);
-    }
-
-    @Override
-    public boolean addChild(byte[] key, long left, long right) {
-        int entryCount = getEntryCount();
-        PageLoc pageLoc = searchKeyIdx(key);
-
-        int slotOffset = HEADER_SIZE + SLOT_CHILD_POINTER + SLOT_SIZE * entryCount;
-
-        int freeSpaceOffset = getFreeSpaceOffset();
-        int payloadSize = 2 + key.length;
-
-        if (slotOffset > freeSpaceOffset - payloadSize) {
-            // write info about page is full
-            byte pageMeta = buffer.get(0);
-            pageMeta = (byte) (pageMeta | FULL_FLAG);
-            buffer.put(0, pageMeta);
-            return false; // Not enough space
-        }
-
-        // Write key-value to payload area
-        int dataStart = freeSpaceOffset - payloadSize;
-        int kvOffset = dataStart;
-        buffer.putShort(kvOffset, (short) key.length);
-        kvOffset += 2;
-        buffer.put(kvOffset, key);
-
-        // Write slot
-        int idx = pageLoc.idx();
-        if (idx >= 0 && idx < entryCount) {
-            // move bigger entry to the right
-            int start = HEADER_SIZE + SLOT_SIZE * idx;
-            int end = slotOffset;
-            byte[] tmp = new byte[end - start];
-            // leave two bytes for the new entry
-            buffer.get(start, tmp);
-
-            buffer.putLong(start - SLOT_CHILD_POINTER, left);
-            buffer.putShort(start, (short) dataStart);
-            buffer.putLong(start + SLOT_KEY_SIZE, right);
-            buffer.put(start + SLOT_SIZE, tmp);
-        } else {
-            buffer.putLong(slotOffset - SLOT_CHILD_POINTER, left);
-            buffer.putShort(slotOffset, (short) dataStart);
-            buffer.putLong(slotOffset + SLOT_KEY_SIZE, right);
-        }
-
-        // Update header
-        setFreeSpaceOffset(freeSpaceOffset - payloadSize);
-        setEntryCount(entryCount + 1);
-
-        return true;
-    }
-
-    public static long bytesToLong(byte[] bytes) {
-        if (bytes.length != 8) {
-            throw new IllegalArgumentException("Byte array must be 8 bytes long");
-        }
-
-        return ((long) (bytes[0] & 0xFF) << 56) |
-                ((long) (bytes[1] & 0xFF) << 48) |
-                ((long) (bytes[2] & 0xFF) << 40) |
-                ((long) (bytes[3] & 0xFF) << 32) |
-                ((long) (bytes[4] & 0xFF) << 24) |
-                ((long) (bytes[5] & 0xFF) << 16) |
-                ((long) (bytes[6] & 0xFF) << 8) |
-                ((long) (bytes[7] & 0xFF));
+    protected ByteBuffer buffer() {
+        return buffer;
     }
 }

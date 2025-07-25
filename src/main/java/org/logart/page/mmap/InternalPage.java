@@ -5,6 +5,9 @@ import org.logart.page.Page;
 import java.nio.ByteBuffer;
 
 public class InternalPage extends AbstractPage implements Page {
+    protected static final int SLOT_CHILD_POINTER = 8;
+    private static final int SLOT_SIZE = 2 + SLOT_CHILD_POINTER; // each slot is a 2-byte pointer to payload + 8-byte child pointer
+
     public InternalPage(ByteBuffer buffer) {
         super(buffer);
     }
@@ -17,14 +20,15 @@ public class InternalPage extends AbstractPage implements Page {
          *      Full flag	    1 bit	Indicates if the page is full
          *      Is deleted 	    1 bit	Indicates if the page is deleted
          *      Padding 	    5 bits	Reserved for future use
+         * Padding              7 bytes padding to align to 8 bytes
          * Page ID	            8 bytes	This page's ID
          * Number of entries	2 bytes	Slot count
          * Free space offset	2 bytes	Start of free space
-         * Right sibling ptr	8 bytes	Only for leaf pages
-         * Parent ptr / unused	8 bytes	Optional
-         * Reserved	~5 bytes	Padding
+         * Padding              4 bytes padding to align to 8 bytes
+         * Right sibling ptr	8 bytes	Only for leaf pages -- not yet implemented
          *
-         * Left child pointer:  8 bytes	Only for internal pages
+         * <p>
+         * Left child pointer:  8 bytes	Only for internal pages -- not yet implemented
          * Slot table:          2 bytes per entry + 8 bytes per child pointer
          * Free space:          variable size
          * Payload:             variable size
@@ -50,6 +54,7 @@ public class InternalPage extends AbstractPage implements Page {
         throw new UnsupportedOperationException("InternalPage does not support put operation directly. Use getChild instead.");
     }
 
+    @Override
     public byte[][] getEntry(int index) {
         int entryCount = getEntryCount();
         if (index >= entryCount) return null;
@@ -74,15 +79,24 @@ public class InternalPage extends AbstractPage implements Page {
 
     @Override
     public void copyChildren(Page page, int startIdx, int endIdx) {
-        throw new UnsupportedOperationException("TODO implement");
+        // copy the entire page, so we will have all the keys and children
+        this.copy(page);
+        InternalPage internalPage = (InternalPage) page;
+        ByteBuffer src = internalPage.buffer();
+        int offset = HEADER_SIZE + startIdx * SLOT_SIZE;
+        // add a child pointer to the end since every key have left and right, this will allow capturing a right child pointer too
+        int length = (endIdx - startIdx) * SLOT_SIZE + SLOT_CHILD_POINTER;
+        buffer().put(HEADER_SIZE, src, offset, length);
+        setEntryCount(endIdx - startIdx);
     }
 
     @Override
     public void replaceChild(long childId, long newId) {
-        for (int i = 0; i < getEntryCount(); i++) {
+        // we need <= here since we have +1 child compared to keys
+        for (int i = 0; i <= getEntryCount(); i++) {
             long child = getChild(i);
             if (child == childId) {
-                buffer().putLong(HEADER_SIZE + SLOT_CHILD_POINTER + (SLOT_SIZE * i) + SLOT_KEY_SIZE, newId);
+                buffer().putLong(HEADER_SIZE + (SLOT_SIZE * i), newId);
                 return;
             }
         }
@@ -93,6 +107,7 @@ public class InternalPage extends AbstractPage implements Page {
         throw new UnsupportedOperationException("TODO implement");
     }
 
+    @Override
     public long getChild(byte[] key) {
         PageLoc pageLoc = searchKeyIdx(key);
         if (pageLoc.idx() < getEntryCount() && pageLoc.cmp() >= 0) {
@@ -137,7 +152,6 @@ public class InternalPage extends AbstractPage implements Page {
             int start = HEADER_SIZE + SLOT_SIZE * idx;
             int end = slotOffset;
             byte[] tmp = new byte[end - start];
-            // leave two bytes for the new entry
             buffer().get(start, tmp);
 
             buffer().putLong(start - SLOT_CHILD_POINTER, left);

@@ -1,9 +1,5 @@
 package org.logart.page;
 
-import org.logart.node.BTreeNode;
-
-import java.nio.ByteBuffer;
-
 public interface Page {
 
     long pageId();
@@ -37,6 +33,4 @@ public interface Page {
     void replaceChild(long childId, long newId);
 
     long[] childrenDbugTODOREMOVE();
-
-    ByteBuffer buffer();
 }

@@ -97,7 +97,8 @@ public class MMAPBasedPageManager implements PageManager {
      */
     public void writePage(long pageId, Page page) {
         // todo maybe we could just do force() on underlying mmap buffer
-        ByteBuffer buffer = page.buffer();
+        AbstractPage internalPage = (AbstractPage) page;
+        ByteBuffer buffer = internalPage.buffer();
         if (buffer.position() != 0) {
             buffer.rewind();
         }

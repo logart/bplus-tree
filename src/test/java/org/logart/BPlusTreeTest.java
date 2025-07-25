@@ -112,7 +112,6 @@ public class BPlusTreeTest {
     }
 
     @Test
-    @Disabled
     public void shouldSplit() {
         for (int i = 0; i < 10_000_000; i++) {
             byte[] key = ("key-" + i).getBytes();

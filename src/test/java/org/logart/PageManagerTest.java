@@ -2,20 +2,17 @@ package org.logart;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.logart.page.mmap.MMAPBasedPageManager;
 import org.logart.page.Page;
 import org.logart.page.PageManager;
+import org.logart.page.mmap.AbstractPage;
+import org.logart.page.mmap.MMAPBasedPageManager;
 
 import java.io.File;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.*;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.logart.page.mmap.LeafPage.FREE_SPACE_OFFSET;
@@ -257,14 +254,6 @@ public class PageManagerTest {
 //            }
 //        });
 //    }
-
-    @Test
-    void allocateShouldWriteDefaultPageHeader() throws Exception {
-        final Page page = pageManager.allocateLeafPage();
-        ByteBuffer pageContent = page.buffer();
-        assertEquals(LEAF_FLAG, LEAF_FLAG & pageContent.get(0), "Page should be leaf");
-        assertEquals(PAGE_SIZE, pageContent.getShort(FREE_SPACE_OFFSET), "Free space offset should be initialized to header size");
-    }
 
     void testConcurrently(int threadCount, TestCore test) throws Exception {
         Queue<AssertionError> errors = new ConcurrentLinkedQueue<>();

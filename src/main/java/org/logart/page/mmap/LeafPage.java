@@ -6,6 +6,8 @@ import org.logart.page.Page;
 import java.nio.ByteBuffer;
 
 public class LeafPage extends AbstractPage implements Page {
+    protected static final int SLOT_SIZE = 2;               // each slot is a 2-byte pointer to payload
+
     public LeafPage(ByteBuffer buffer) {
         super(buffer);
     }

@@ -121,11 +121,6 @@ public class InMemoryPage implements Page {
     }
 
     @Override
-    public ByteBuffer buffer() {
-        throw new UnsupportedOperationException("InMemoryPage does not support buffer operation. Use getEntry or put instead.");
-    }
-
-    @Override
     public void copy(Page page) {
         if (!(page instanceof InMemoryPage memPage)) {
             throw new IllegalArgumentException("Can only copy from InMemoryPage.");
