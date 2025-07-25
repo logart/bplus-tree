@@ -270,6 +270,10 @@ public class MapBasedNodeManagerConcurrencyTest {
             executor.shutdown();
         }
 
+        // we need to move a version on to release last page, the page is not released by default on the current version
+        Versioned<BTreeNode> lastVersion = nodeManager.lockVersion();
+        nodeManager.advanceVersion(lastVersion, null);
+        nodeManager.releaseVersion(lastVersion);
         assertNull(nodeManager.readNode(id), "Node was not freed after all concurrent versions finished");
     }
 

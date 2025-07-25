@@ -2,6 +2,7 @@ package org.logart;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.logart.node.DefaultNodeManager;
 import org.logart.page.mmap.MMAPBasedPageManager;
@@ -108,5 +109,21 @@ public class BPlusTreeTest {
         new Random().nextBytes(value);
         tree.put(key, value);
         assertArrayEquals(value, tree.get(key));
+    }
+
+    @Test
+    @Disabled
+    public void shouldSplit() {
+        for (int i = 0; i < 10_000_000; i++) {
+            byte[] key = ("key-" + i).getBytes();
+            byte[] value = ("value-" + i).getBytes();
+            try {
+                tree.put(key, value);
+            } catch (IllegalArgumentException e) {
+                // this is expected, we are testing the split functionality
+                System.out.println("Split occurred at key: " + i);
+                throw e;
+            }
+        }
     }
 }

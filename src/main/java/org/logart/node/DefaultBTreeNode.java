@@ -93,12 +93,18 @@ public class DefaultBTreeNode implements BTreeNode {
 
     @Override
     public String toString() {
-        return "DefaultBTreeNode{" +
+        boolean leaf = page.isLeaf();
+        String result = "DefaultBTreeNode{" +
                 "id=" + page.pageId() +
-                ", l=" + page.isLeaf() +
-                ", data=" + dataToString() +
-                ", children=" + Arrays.toString(childrenDebugTODOREMOVE()) +
-                '}';
+                ", l=" + leaf;
+        if (leaf) {
+            result += ", data=" + dataToString();
+        }
+        if (!leaf) {
+            result += ", children=" + Arrays.toString(childrenDebugTODOREMOVE());
+        }
+        result += '}';
+        return result;
     }
 
     private String dataToString() {

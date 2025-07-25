@@ -258,20 +258,6 @@ public class PageManagerTest {
 //        });
 //    }
 
-    @Disabled // todo
-    @Test
-    void testRemovePageLockAfterDeletionOfThePage() throws Exception {
-        final Page page = pageManager.allocatePage();
-        pageManager.freePage(page.pageId());
-        MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(PageManager.class, MethodHandles.lookup());
-        VarHandle pageLocksHandle = lookup.findVarHandle(PageManager.class, "pageLocks", ConcurrentMap.class);
-        @SuppressWarnings("unchecked")
-        ConcurrentMap<Long, ReentrantReadWriteLock> pageLocks =
-                (ConcurrentMap<Long, ReentrantReadWriteLock>) pageLocksHandle.get(pageManager);
-
-        assertNull(pageLocks.get(page.pageId()));
-    }
-
     @Test
     void allocateShouldWriteDefaultPageHeader() throws Exception {
         final Page page = pageManager.allocateLeafPage();
