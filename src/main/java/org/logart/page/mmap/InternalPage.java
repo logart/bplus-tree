@@ -122,7 +122,7 @@ public class InternalPage extends AbstractPage implements Page {
         int freeSpaceOffset = getFreeSpaceOffset();
         int payloadSize = PAYLOAD_SIZE_FIELD_SIZE + key.length;
 
-        if (availableSpace() < payloadSize + SLOT_SIZE) {
+        if (availableSpace() < payloadSize + internalOverhead()) {
             // write info about page is full
             byte pageMeta = buffer2().get(0);
             sanityCheck();

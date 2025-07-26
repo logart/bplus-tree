@@ -47,7 +47,6 @@ public class BPlusTreeTest {
     void testInsertMultipleAndGetCorrectValues() {
         for (int i = 0; i < 100; i++) {
             tree.put(("key" + i).getBytes(), ("value" + i).getBytes());
-            System.out.println(((DefaultBPlusTree) tree).printStructure());
             assertArrayEquals(("value" + i).getBytes(), tree.get(("key" + i).getBytes()),
                     "Value for key" + i + " should match");
         }
@@ -82,23 +81,24 @@ public class BPlusTreeTest {
     @Test
     void testConcurrentPutsAndGets() throws Exception {
         int threadCount = 8;
-        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
-        List<Callable<Void>> tasks = new ArrayList<>();
-        for (int t = 0; t < threadCount; t++) {
-            final int threadId = t;
-            tasks.add(() -> {
-                for (int i = 0; i < 100; i++) {
-                    byte[] key = ("key-" + threadId + "-" + i).getBytes();
-                    byte[] value = ("value-" + threadId + "-" + i).getBytes();
-                    tree.put(key, value);
-                    assertArrayEquals(value, tree.get(key));
-                }
-                return null;
-            });
+        try (ExecutorService executor = Executors.newFixedThreadPool(threadCount)) {
+            List<Callable<Void>> tasks = new ArrayList<>();
+            for (int t = 0; t < threadCount; t++) {
+                final int threadId = t;
+                tasks.add(() -> {
+                    for (int i = 0; i < 100; i++) {
+                        byte[] key = ("key-" + threadId + "-" + i).getBytes();
+                        byte[] value = ("value-" + threadId + "-" + i).getBytes();
+                        tree.put(key, value);
+                        assertArrayEquals(value, tree.get(key));
+                    }
+                    return null;
+                });
+            }
+            executor.invokeAll(tasks);
+            executor.shutdown();
+            assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
         }
-        executor.invokeAll(tasks);
-        executor.shutdown();
-        assertTrue(executor.awaitTermination(10, TimeUnit.SECONDS));
     }
 
     @Test

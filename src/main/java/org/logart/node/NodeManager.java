@@ -4,6 +4,8 @@ import org.logart.Versioned;
 import org.logart.VersionedRefCounter;
 
 public interface NodeManager {
+    void open();
+
     BTreeNode allocateNode();
 
     BTreeNode allocateLeafNode();

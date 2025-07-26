@@ -39,10 +39,11 @@ public class LeafPage extends AbstractPage implements Page {
         int slotOffset = SLOT_SIZE * entryCount + HEADER_SIZE;
 
         int freeSpaceOffset = getFreeSpaceOffset();
-        int payloadSize = PAYLOAD_SIZE_FIELD_SIZE + key.length + PAYLOAD_SIZE_FIELD_SIZE + value.length;
+        int payloadSize = key.length + value.length;
+        int payloadSizeWithMeta = payloadSize + PAYLOAD_SIZE_FIELD_SIZE * 2; // two size fields for key and value
 
         // we need to reserve space for slot offset too
-        if (isFull() || availableSpace() < payloadSize + SLOT_SIZE) {
+        if (isFull() || availableSpace() < payloadSize + internalOverhead()) {
             // write info about page is full
             byte pageMeta = buffer2().get(0);
             sanityCheck();
@@ -53,7 +54,7 @@ public class LeafPage extends AbstractPage implements Page {
         }
 
         // Write key-value to payload area
-        int dataStart = freeSpaceOffset - payloadSize;
+        int dataStart = freeSpaceOffset - payloadSizeWithMeta;
         int kvOffset = dataStart;
         buffer2().putShort(kvOffset, (short) key.length);
         sanityCheck();
@@ -68,7 +69,7 @@ public class LeafPage extends AbstractPage implements Page {
         sanityCheck();
 
         // Write slot
-        setFreeSpaceOffset(freeSpaceOffset - payloadSize);
+        setFreeSpaceOffset(freeSpaceOffset - payloadSizeWithMeta);
 
         PageLoc pageLoc = searchKeyIdx(key);
         int idx = pageLoc.idx();
@@ -175,7 +176,7 @@ public class LeafPage extends AbstractPage implements Page {
 
     @Override
     protected int internalOverhead() {
-        return PAYLOAD_SIZE_FIELD_SIZE * 2;// one for the key and one for the value
+        return PAYLOAD_SIZE_FIELD_SIZE * 2 + SLOT_SIZE;// one for the key and one for the value
     }
 
     @Override

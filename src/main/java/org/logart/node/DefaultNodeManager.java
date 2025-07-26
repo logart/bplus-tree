@@ -24,6 +24,13 @@ public class DefaultNodeManager implements NodeManager {
     }
 
     @Override
+    public void open() {
+        DefaultBTreeNode root = new DefaultBTreeNode(pageManager.open());
+        // todo load version too?
+        versionRefCounter.load(root, 0L);
+    }
+
+    @Override
     public BTreeNode allocateNode() {
         return allocateNode(false);
     }
@@ -59,7 +66,7 @@ public class DefaultNodeManager implements NodeManager {
 
     @Override
     public void writeNode(long nodeId, BTreeNode node) {
-
+        pageManager.writePage(nodeId, node.page());
     }
 
     @Override
@@ -129,6 +136,12 @@ public class DefaultNodeManager implements NodeManager {
 
     @Override
     public void close() {
+        Versioned<BTreeNode> root = versionRefCounter.lockVersion();
+        try {
+            pageManager.writeRoot(root.get());
+        } finally {
+            versionRefCounter.releaseVersion(root);
+        }
         pageManager.close();
     }
 

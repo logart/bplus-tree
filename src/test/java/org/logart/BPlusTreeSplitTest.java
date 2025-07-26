@@ -42,9 +42,6 @@ public class BPlusTreeSplitTest {
         assertArrayEquals("A".getBytes(), tree.get("10".getBytes()));
         assertArrayEquals("D".getBytes(), tree.get("40".getBytes()));
         assertNull(tree.get("50".getBytes()));
-
-        // Optional: visualize
-        System.out.println(((DefaultBPlusTree) tree).printStructure());
     }
 
     @Test
@@ -52,15 +49,12 @@ public class BPlusTreeSplitTest {
         for (int i = 10; i <= 100; i += 10) {
             tree.put(String.valueOf(i).getBytes(), ("V" + i).getBytes());
             System.out.println("Added: " + i);
-            System.out.println(((DefaultBPlusTree) tree).printStructure());
         }
 
         // Root should have children now
         for (int i = 10; i <= 100; i += 10) {
             assertArrayEquals(("V" + i).getBytes(), tree.get(String.valueOf(i).getBytes()));
         }
-
-        System.out.println(((DefaultBPlusTree) tree).printStructure());
     }
 
     @Test
@@ -70,7 +64,6 @@ public class BPlusTreeSplitTest {
         for (int k : keys) {
             tree.put(String.valueOf(k).getBytes(), ("Val" + k).getBytes());
             System.out.println("Added: " + k);
-            System.out.println(((DefaultBPlusTree) tree).printStructure());
         }
 
         for (int k : keys) {
@@ -79,8 +72,6 @@ public class BPlusTreeSplitTest {
 
         // Check the tree still valid
         assertNull(tree.get(String.valueOf(999).getBytes()));
-
-        System.out.println(((DefaultBPlusTree) tree).printStructure());
     }
 
     @Test

@@ -90,30 +90,4 @@ public class DefaultBTreeNode implements BTreeNode {
     public long[] childrenDebugTODOREMOVE() {
         return page.childrenDbugTODOREMOVE();
     }
-
-    @Override
-    public String toString() {
-        boolean leaf = page.isLeaf();
-        String result = "DefaultBTreeNode{" +
-                "id=" + page.pageId() +
-                ", l=" + leaf;
-        if (leaf) {
-            result += ", data=" + dataToString();
-        }
-        if (!leaf) {
-            result += ", children=" + Arrays.toString(childrenDebugTODOREMOVE());
-        }
-        result += '}';
-        return result;
-    }
-
-    private String dataToString() {
-        StringBuilder result = new StringBuilder();
-        int size = page.getEntryCount();
-        for (int i = 0; i < size; i++) {
-            byte[][] e = page.getEntry(i);
-            result.append("{key[").append(i).append("]=").append(e[0] == null ? null : new String(e[1]));
-        }
-        return result.toString();
-    }
 }

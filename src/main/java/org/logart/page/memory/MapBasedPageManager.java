@@ -1,5 +1,6 @@
 package org.logart.page.memory;
 
+import org.logart.node.BTreeNode;
 import org.logart.page.Page;
 import org.logart.page.PageManager;
 
@@ -12,6 +13,12 @@ public class MapBasedPageManager implements PageManager {
     private final AtomicLong nextId = new AtomicLong(0);
     private final ConcurrentMap<Long, Page> pages = new ConcurrentHashMap<>();
     private final Set<Long> free = ConcurrentHashMap.newKeySet();
+
+    @Override
+    public Page open() {
+        // in memory page manager could not be loaded
+        return null;
+    }
 
     @Override
     public Page allocatePage() {
@@ -40,6 +47,11 @@ public class MapBasedPageManager implements PageManager {
     @Override
     public void writePage(long pageId, Page page) {
 
+    }
+
+    @Override
+    public void writeRoot(BTreeNode root) {
+        // in memory mop does not need it
     }
 
     @Override

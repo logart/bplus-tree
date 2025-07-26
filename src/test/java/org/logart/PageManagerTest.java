@@ -213,7 +213,8 @@ public class PageManagerTest {
         long expectedSize = threadCount * iterations * PAGE_SIZE;
         assertEquals(threadCount * iterations, ((MMAPBasedPageManager) pageManager).getAllocatedPageCount(),
                 "Total allocated pages count mismatch after concurrent allocation");
-        assertEquals(expectedSize, new File(tempFile.getAbsolutePath()).length(),
+        // we need to add 8 bytes that store root pointer
+        assertEquals(expectedSize + 8, new File(tempFile.getAbsolutePath()).length(),
                 "File size mismatch – indicates race in allocation or write");
     }
 

@@ -1,6 +1,7 @@
 package org.logart.page.mmap;
 
 import org.logart.ConcurrentLinkedUniqueQueue;
+import org.logart.node.BTreeNode;
 import org.logart.page.Page;
 import org.logart.page.PageManager;
 
@@ -18,12 +19,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class MMAPBasedPageManager implements PageManager {
+    private static final int PAGE_POINTER_SIZE = 8;
+
     private final FileChannel channel;
     private final int pageSize;
     private final Set<Long> pages = ConcurrentHashMap.newKeySet();
     private final Queue<Long> freePagesIds = new ConcurrentLinkedUniqueQueue<>();
     private final AtomicLong currentPageId;
     private final boolean sanityCheckEnabled;
+    private final MappedByteBuffer rootPointer;
 
     public MMAPBasedPageManager(File file, int pageSize) throws IOException {
         this(file, pageSize, true);
@@ -37,8 +41,15 @@ public class MMAPBasedPageManager implements PageManager {
                 StandardOpenOption.WRITE,
                 StandardOpenOption.CREATE
         );
+        this.rootPointer = channel.map(FileChannel.MapMode.READ_WRITE, 0, PAGE_POINTER_SIZE);
         this.currentPageId = new AtomicLong(channel.size() / pageSize);
         this.sanityCheckEnabled = sanityCheckEnabled;
+    }
+
+    @Override
+    public Page open() {
+        long rootId = rootPointer.getLong(0);
+        return readPage(rootId);
     }
 
     /**
@@ -49,9 +60,9 @@ public class MMAPBasedPageManager implements PageManager {
         Long potentialPageId = freePagesIds.poll();
         final long pageId = Objects.requireNonNullElseGet(potentialPageId, currentPageId::getAndIncrement);
 
-        ByteBuffer emptyPage;
+        MappedByteBuffer emptyPage;
         try {
-            emptyPage = channel.map(FileChannel.MapMode.READ_WRITE, pageId * pageSize, pageSize);
+            emptyPage = channel.map(FileChannel.MapMode.READ_WRITE, pageId * pageSize + PAGE_POINTER_SIZE, pageSize);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -69,9 +80,10 @@ public class MMAPBasedPageManager implements PageManager {
         Long potentialPageId = freePagesIds.poll();
         final long pageId = Objects.requireNonNullElseGet(potentialPageId, currentPageId::getAndIncrement);
 
-        ByteBuffer emptyPage;
+        MappedByteBuffer emptyPage;
         try {
-            emptyPage = channel.map(FileChannel.MapMode.READ_WRITE, pageId * pageSize, pageSize);
+            // keep first 8 bytes for a root pointer
+            emptyPage = channel.map(FileChannel.MapMode.READ_WRITE, pageId * pageSize + PAGE_POINTER_SIZE, pageSize);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -87,7 +99,7 @@ public class MMAPBasedPageManager implements PageManager {
     public Page readPage(long pageId) {
         MappedByteBuffer buffer;
         try {
-            buffer = channel.map(FileChannel.MapMode.READ_WRITE, pageId * pageSize, pageSize);
+            buffer = channel.map(FileChannel.MapMode.READ_WRITE, pageId * pageSize + PAGE_POINTER_SIZE, pageSize);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -114,6 +126,12 @@ public class MMAPBasedPageManager implements PageManager {
             throw new IllegalArgumentException("Buffer size " + remaining + " does not match page size " + pageSize);
         }
         ((MappedByteBuffer) buffer).force();
+    }
+
+    @Override
+    public void writeRoot(BTreeNode root) {
+        rootPointer.putLong(0, root.id());
+        rootPointer.force();
     }
 
     @Override

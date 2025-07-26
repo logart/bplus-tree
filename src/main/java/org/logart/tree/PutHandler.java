@@ -29,26 +29,25 @@ public class PutHandler {
             nodeCopy = nodeManager.allocateNode();
             nodeCopy.addChildren(splitResult.promotedKey(), splitResult.left().id(), splitResult.right().id());
             putIntoNewlyAllocatedChild(key, value, splitResult);
+            nodeManager.writeNode(nodeCopy.id(), nodeCopy);
             return new PutResult(nodeCopy, oldNodes);
         }
-        nodeCopy = node.isLeaf()
-                ? nodeManager.allocateLeafNode()
-                : nodeManager.allocateNode();
-        nodeCopy.copy(node);
-        if (nodeCopy.isLeaf()) {
+        if (node.isLeaf()) {
+            nodeCopy = nodeManager.allocateLeafNode();
+            nodeCopy.copy(node);
             nodeCopy.put(key, value);
         } else {
-            long childId = nodeCopy.findChild(key);
+            long childId = node.findChild(key);
             BTreeNode child = nodeManager.readNode(childId);
 
             PutResult putResult = put(child, key, value, version);
             oldNodes.addAll(putResult.oldNodes());
 
             BTreeNode childCopy = putResult.nodeCopy();
-            if (childCopy != null) {
-                nodeCopy.replaceChild(childId, childCopy.id());
-                oldNodes.add(childId);
-            }
+            nodeCopy = nodeManager.allocateNode();
+            nodeCopy.copy(node);
+            nodeCopy.replaceChild(childId, childCopy.id());
+            oldNodes.add(childId);
         }
 
         nodeManager.writeNode(nodeCopy.id(), nodeCopy);

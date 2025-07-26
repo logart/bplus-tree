@@ -17,6 +17,19 @@ public class VersionedRefCounter<T> {
         this.currentVersionRef = new AtomicReference<>(new Versioned<>(starter.get(), nextVersion.getAndIncrement()));
     }
 
+    /**
+     * This method is desctructive, evenrything that happened before will be lost.
+     *
+     * @param root    new root to start from
+     * @param version new version of the root
+     */
+    // load should only happen once, so it's not a big deal to use synchronized here
+    public synchronized void load(T root, long version) {
+        this.currentVersionRef.set(new Versioned<>(root, version));
+        this.nextVersion.set(version + 1);
+        refCounts.clear();
+    }
+
     public boolean advanceVersion(Versioned<T> current, T next) {
         return currentVersionRef.compareAndSet(current, new Versioned<>(next, nextVersion.getAndIncrement()));
     }

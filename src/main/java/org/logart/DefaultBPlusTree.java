@@ -1,11 +1,11 @@
 package org.logart;
 
 import org.logart.node.BTreeNode;
+import org.logart.node.DefaultBTreeNode;
 import org.logart.node.NodeManager;
 import org.logart.tree.PutHandler;
 import org.logart.tree.PutResult;
 
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -16,6 +16,11 @@ public class DefaultBPlusTree implements BPlusTree {
     public DefaultBPlusTree(NodeManager nodeManager) {
         this.nodeManager = nodeManager;
         this.putHandler = new PutHandler(nodeManager);
+    }
+
+    @Override
+    public void load() {
+        nodeManager.open();
     }
 
     @Override
@@ -70,60 +75,8 @@ public class DefaultBPlusTree implements BPlusTree {
     }
 
     @Override
-    public List<byte[]> getAllKeysInOrder() {
-        return Collections.emptyList();
-    }
-
-    @Override
     public void close() {
         nodeManager.close();
-    }
-
-    public String printStructure() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("B+ Tree Structure:\n");
-        Versioned<BTreeNode> currentVersionedRoot = nodeManager.lockVersion();
-        try {
-            printRecursive(currentVersionedRoot.get(), sb, 0);
-        } finally {
-            nodeManager.releaseVersion(currentVersionedRoot);
-        }
-        sb.append("B+ Tree Structure end.\n\n");
-        return sb.toString();
-    }
-
-    private void printRecursive(BTreeNode node, StringBuilder sb, int level) {
-        if (node == null) {
-            return;
-        }
-        String indent = "  ".repeat(level);
-
-        if (node.isLeaf()) {
-            sb.append(indent).append("Leaf ");
-            for (int i = 0; i < node.numKeys(); i++) {
-                sb.append(new String(node.get(i)[0])).append(", ");
-            }
-            sb.append(" -> ");
-            for (int i = 0; i < node.numKeys(); i++) {
-                sb.append(new String(node.get(i)[1])).append(", ");
-            }
-            sb.append("\n");
-        } else {
-            sb.append(indent).append("Internal ");
-            for (int i = 0; i < node.numKeys(); i++) {
-                sb.append(new String(node.get(i)[0])).append(", ");
-            }
-            sb.append("\n");
-            for (long childId : node.childrenDebugTODOREMOVE()) {
-                BTreeNode child = nodeManager.readNode(childId);
-                printRecursive(child, sb, level + 1);
-            }
-        }
-    }
-
-    @Override
-    public String toString() {
-        return printStructure();
     }
 
     // this implementation uses list and not set since it is used for debugging purposes,

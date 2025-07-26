@@ -97,19 +97,6 @@ public class InMemoryBPlusTreeTest {
     }
 
     @Test
-    void testSortedLeafOrder() {
-        for (int i = 0; i < 1000; i++) {
-            String s = String.format("%04d", i);
-            tree.put(s.getBytes(), ("val" + s).getBytes());
-        }
-
-        List<byte[]> keysInOrder = tree.getAllKeysInOrder();
-        for (int i = 1; i < keysInOrder.size(); i++) {
-            assertTrue(compare(keysInOrder.get(i - 1), keysInOrder.get(i)) < 0);
-        }
-    }
-
-    @Test
     void testVariableKeyAndValueSizes() {
         for (int i = 1; i <= 1024; i *= 2) {
             byte[] key = new byte[i];

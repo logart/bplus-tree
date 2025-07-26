@@ -119,7 +119,7 @@ public class PageBasedNodeManagerConcurrencyTest {
 
         nodeManager.releaseVersion(version);
 
-        nodeManager.advanceVersion(version, null);
+        nodeManager.advanceVersion(version, nodeManager.allocateNode());
         // Now the node should be gone
         assertReleased(nodeId);
     }
@@ -184,7 +184,7 @@ public class PageBasedNodeManagerConcurrencyTest {
         // event after release of v1 we could not clean up this node since someone could still use it on v2 or v3
         assertNotNull(nodeManager.readNode(nodeId));
 
-        nodeManager.advanceVersion(v2, null);
+        nodeManager.advanceVersion(v2, nodeManager.allocateNode());
         // node should be released now
         assertReleased(nodeId);
     }
@@ -203,7 +203,7 @@ public class PageBasedNodeManagerConcurrencyTest {
         assertNotNull(nodeManager.readNode(id), "Node freed after first release");
 
         nodeManager.releaseVersion(version2); // Second release
-        nodeManager.advanceVersion(version2, null);
+        nodeManager.advanceVersion(version2, nodeManager.allocateNode());
         assertReleased(id);
     }
 
@@ -234,7 +234,7 @@ public class PageBasedNodeManagerConcurrencyTest {
         assertNotNull(nodeManager.readNode(id), "Freed with version 2 still active!");
 
         nodeManager.releaseVersion(v2); // finally safe to free
-        nodeManager.advanceVersion(v2, null);
+        nodeManager.advanceVersion(v2, nodeManager.allocateNode());
         assertReleased(id);
     }
 
@@ -285,7 +285,7 @@ public class PageBasedNodeManagerConcurrencyTest {
             finishLatch.await();
             // we need to advance a version at least once since it's not safe to clean up the current version
             Versioned<BTreeNode> current = nodeManager.lockVersion();
-            nodeManager.advanceVersion(current, null);
+            nodeManager.advanceVersion(current, nodeManager.allocateNode());
             nodeManager.releaseVersion(current);
             executor.shutdown();
         }
@@ -308,7 +308,7 @@ public class PageBasedNodeManagerConcurrencyTest {
         }
 
         nodeManager.releaseVersion(version);
-        nodeManager.advanceVersion(version, null);
+        nodeManager.advanceVersion(version, nodeManager.allocateNode());
 
         for (BTreeNode node : nodes) {
             assertReleased(node.id());
