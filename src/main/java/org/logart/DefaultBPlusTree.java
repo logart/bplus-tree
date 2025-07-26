@@ -96,7 +96,7 @@ public class DefaultBPlusTree implements BPlusTree {
         visited.add(node.id());
 
         if (!node.isLeaf()) {
-            for (long childId : node.childrenDebugTODOREMOVE()) {
+            for (long childId : ((DefaultBTreeNode)node).children()) {
                 if (childId != -1) {
                     BTreeNode child = nodeManager.readNode(childId);
                     if (child == null) {

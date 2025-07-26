@@ -105,7 +105,7 @@ public abstract class AbstractPage implements Page {
 
     @Override
     public boolean isAlmostFull(long capacity) {
-        byte pageMeta = buffer2().get(0);
+        byte pageMeta = buffer().get(0);
         return (pageMeta & FULL_FLAG) == FULL_FLAG
                 || availableSpace() < capacity + internalOverhead(); // Check if free space is less than capacity
     }
@@ -148,27 +148,13 @@ public abstract class AbstractPage implements Page {
     public void copy(Page page) {
         AbstractPage internalPage = (AbstractPage) page; // Ensure we are working with the same type
         long currentId = pageId();
-        internalPage.buffer2().rewind();
+        internalPage.buffer().rewind();
         buffer.rewind();
-        buffer.put(internalPage.buffer2());
+        buffer.put(internalPage.buffer());
         buffer.putLong(PAGE_ID_OFFSET, currentId); // Ensure the page ID remains the same
-        sanityCheck();
-        internalPage.sanityCheck();
     }
 
-    protected ByteBuffer buffer2() {
-        return buffer(false);
-    }
-
-    protected ByteBuffer buffer(boolean insideSanityCheck) {
-        if (!insideSanityCheck && sanityCheckEnabled) {
-            Exception e = sanityCheck();
-            if (e != null) {
-                throw new RuntimeException(e);
-            }
-        }
+    protected ByteBuffer buffer() {
         return buffer;
     }
-
-    protected abstract Exception sanityCheck();
 }

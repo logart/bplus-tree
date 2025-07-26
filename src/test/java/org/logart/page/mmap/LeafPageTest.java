@@ -172,7 +172,7 @@ public class LeafPageTest {
         try {
             int cnt = checkedPage.getEntryCount();
             for (int i = 0; i < cnt; i++) {
-                ByteBuffer buffer = ((LeafPage) checkedPage).buffer(true);
+                ByteBuffer buffer = ((LeafPage) checkedPage).buffer();
                 short dataStart = buffer.getShort(HEADER_SIZE + (SLOT_SIZE * i));
                 short kSize = buffer.getShort(dataStart);
                 byte[] key = new byte[kSize];

@@ -67,9 +67,4 @@ public class MockBtreeNode implements BTreeNode {
     public Page page() {
         return null;
     }
-
-    @Override
-    public long[] childrenDebugTODOREMOVE() {
-        return new long[0];
-    }
 }

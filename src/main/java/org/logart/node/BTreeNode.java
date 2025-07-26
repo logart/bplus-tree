@@ -27,7 +27,5 @@ public interface BTreeNode {
 
     void copy(BTreeNode node);
 
-    long[] childrenDebugTODOREMOVE();
-
     Page page();
 }

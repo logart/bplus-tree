@@ -45,28 +45,22 @@ public class LeafPage extends AbstractPage implements Page {
         // we need to reserve space for slot offset too
         if (isFull() || availableSpace() < payloadSize + internalOverhead()) {
             // write info about page is full
-            byte pageMeta = buffer2().get(0);
-            sanityCheck();
+            byte pageMeta = buffer().get(0);
             pageMeta = (byte) (pageMeta | FULL_FLAG);
-            buffer2().put(0, pageMeta);
-            sanityCheck();
+            buffer().put(0, pageMeta);
             return false; // Not enough space
         }
 
         // Write key-value to payload area
         int dataStart = freeSpaceOffset - payloadSizeWithMeta;
         int kvOffset = dataStart;
-        buffer2().putShort(kvOffset, (short) key.length);
-        sanityCheck();
+        buffer().putShort(kvOffset, (short) key.length);
         kvOffset += 2;
-        buffer2().put(kvOffset, key);
-        sanityCheck();
+        buffer().put(kvOffset, key);
         kvOffset += key.length;
-        buffer2().putShort(kvOffset, (short) value.length);
-        sanityCheck();
+        buffer().putShort(kvOffset, (short) value.length);
         kvOffset += 2;
-        buffer2().put(kvOffset, value);
-        sanityCheck();
+        buffer().put(kvOffset, value);
 
         // Write slot
         setFreeSpaceOffset(freeSpaceOffset - payloadSizeWithMeta);
@@ -75,8 +69,7 @@ public class LeafPage extends AbstractPage implements Page {
         int idx = pageLoc.idx();
         if (pageLoc.k() != null && pageLoc.cmp() == 0) {
             // Key already exists, update value
-            buffer2().putShort(HEADER_SIZE + SLOT_SIZE * idx, (short) dataStart);
-            sanityCheck();
+            buffer().putShort(HEADER_SIZE + SLOT_SIZE * idx, (short) dataStart);
             return true;
         }
         if (idx >= 0 && idx < entryCount) {
@@ -85,21 +78,16 @@ public class LeafPage extends AbstractPage implements Page {
             int end = slotOffset;
             byte[] tmp = new byte[end - start];
             // leave two bytes for the new entry
-            buffer2().get(start, tmp);
-            sanityCheck();
+            buffer().get(start, tmp);
 
-            buffer2().putShort(start, (short) dataStart);
-            sanityCheck();
-            buffer2().put(start + SLOT_SIZE, tmp);
-            sanityCheck();
+            buffer().putShort(start, (short) dataStart);
+            buffer().put(start + SLOT_SIZE, tmp);
         } else {
-            buffer2().putShort(slotOffset, (short) dataStart);
-            sanityCheck();
+            buffer().putShort(slotOffset, (short) dataStart);
         }
 
         // Update header
         setEntryCount(entryCount + 1);
-        sanityCheck();
         return true;
     }
 
@@ -116,24 +104,19 @@ public class LeafPage extends AbstractPage implements Page {
         if (index >= entryCount) return null;
 
         int slotOffset = HEADER_SIZE + SLOT_SIZE * index;
-        int kvOffset = Short.toUnsignedInt(buffer2().getShort(slotOffset));
-        sanityCheck();
+        int kvOffset = Short.toUnsignedInt(buffer().getShort(slotOffset));
 
-        int keyLen = Short.toUnsignedInt(buffer2().getShort(kvOffset));
-        sanityCheck();
+        int keyLen = Short.toUnsignedInt(buffer().getShort(kvOffset));
 
         kvOffset += 2;
         byte[] key = new byte[keyLen];
-        buffer2().get(kvOffset, key);
-        sanityCheck();
+        buffer().get(kvOffset, key);
         kvOffset += keyLen;
 
-        int valueLen = Short.toUnsignedInt(buffer2().getShort(kvOffset));
-        sanityCheck();
+        int valueLen = Short.toUnsignedInt(buffer().getShort(kvOffset));
         kvOffset += 2;
         byte[] value = new byte[valueLen];
-        buffer2().get(kvOffset, value);
-        sanityCheck();
+        buffer().get(kvOffset, value);
 
         return new byte[][]{key, value};
     }
@@ -159,11 +142,6 @@ public class LeafPage extends AbstractPage implements Page {
     }
 
     @Override
-    public long[] childrenDbugTODOREMOVE() {
-        throw new UnsupportedOperationException("Leaf pages do not have children.");
-    }
-
-    @Override
     protected short entrySize() {
         return SLOT_SIZE;
     }
@@ -177,32 +155,5 @@ public class LeafPage extends AbstractPage implements Page {
     @Override
     protected int internalOverhead() {
         return PAYLOAD_SIZE_FIELD_SIZE * 2 + SLOT_SIZE;// one for the key and one for the value
-    }
-
-    @Override
-    protected Exception sanityCheck() {
-        try {
-            int cnt = getEntryCount();
-            for (int i = 0; i < cnt; i++) {
-                ByteBuffer buffer = buffer(true);
-                short dataStart = buffer.getShort(HEADER_SIZE + (SLOT_SIZE * i));
-                short kSize = buffer.getShort(dataStart);
-                byte[] key = new byte[kSize];
-                buffer.get(dataStart + PAYLOAD_SIZE_FIELD_SIZE, key);
-                short vSize = buffer.getShort(dataStart + PAYLOAD_SIZE_FIELD_SIZE + key.length);
-                byte[] value = new byte[vSize];
-                buffer.get(dataStart + PAYLOAD_SIZE_FIELD_SIZE + kSize + PAYLOAD_SIZE_FIELD_SIZE, value);
-                if (!isValid(key) || !isValid(value)) {
-                    throw new IllegalStateException("Invalid entry at index " + i + " in LeafPage with ID: " + pageId());
-                }
-            }
-            return null;
-        } catch (Exception e) {
-            return e;
-        }
-    }
-
-    private static boolean isValid(byte[] key) {
-        return new String(key).matches("[a-zA-Z0-9_\\-]+");
     }
 }

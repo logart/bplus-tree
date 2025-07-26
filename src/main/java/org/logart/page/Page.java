@@ -31,6 +31,4 @@ public interface Page {
     void copyChildren(Page page, int startIdx, int endIdx);
 
     void replaceChild(long childId, long newId);
-
-    long[] childrenDbugTODOREMOVE();
 }

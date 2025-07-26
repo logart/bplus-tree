@@ -19,7 +19,6 @@ public class InternalPage extends AbstractPage implements Page {
 
     public static Page newPage(long pageId, ByteBuffer buf, boolean sanityCheckEnabled) {
         /**
-         * Left child pointer:  8 bytes	Only for internal pages -- not yet implemented
          * Slot table:          2 bytes per entry + 8 bytes per child pointer
          * Free space:          variable size
          * Payload:             variable size
@@ -51,15 +50,12 @@ public class InternalPage extends AbstractPage implements Page {
         if (index >= entryCount) return null;
 
         int slotOffset = HEADER_SIZE + SLOT_CHILD_POINTER + SLOT_SIZE * index;
-        int kvOffset = Short.toUnsignedInt(buffer2().getShort(slotOffset));
-        sanityCheck();
+        int kvOffset = Short.toUnsignedInt(buffer().getShort(slotOffset));
 
-        int keyLen = Short.toUnsignedInt(buffer2().getShort(kvOffset));
-        sanityCheck();
+        int keyLen = Short.toUnsignedInt(buffer().getShort(kvOffset));
         kvOffset += PAYLOAD_SIZE_FIELD_SIZE;
         byte[] key = new byte[keyLen];
-        buffer2().get(kvOffset, key);
-        sanityCheck();
+        buffer().get(kvOffset, key);
 
         return new byte[][]{key, null};
     }
@@ -69,13 +65,11 @@ public class InternalPage extends AbstractPage implements Page {
         // copy the entire page, so we will have all the keys and children
         this.copy(page);
         InternalPage internalPage = (InternalPage) page;
-        ByteBuffer src = internalPage.buffer2();
-        sanityCheck();
+        ByteBuffer src = internalPage.buffer();
         int offset = HEADER_SIZE + startIdx * SLOT_SIZE;
         // add a child pointer to the end since every key have left and right, this will allow capturing a right child pointer too
         int length = (endIdx - startIdx) * SLOT_SIZE + SLOT_CHILD_POINTER;
-        buffer2().put(HEADER_SIZE, src, offset, length);
-        sanityCheck();
+        buffer().put(HEADER_SIZE, src, offset, length);
         setEntryCount(endIdx - startIdx);
     }
 
@@ -85,16 +79,10 @@ public class InternalPage extends AbstractPage implements Page {
         for (int i = 0; i <= getEntryCount(); i++) {
             long child = getChild(i);
             if (child == childId) {
-                buffer2().putLong(HEADER_SIZE + (SLOT_SIZE * i), newId);
-                sanityCheck();
+                buffer().putLong(HEADER_SIZE + (SLOT_SIZE * i), newId);
                 return;
             }
         }
-    }
-
-    @Override
-    public long[] childrenDbugTODOREMOVE() {
-        throw new UnsupportedOperationException("TODO implement");
     }
 
     @Override
@@ -107,9 +95,7 @@ public class InternalPage extends AbstractPage implements Page {
     }
 
     private long getChild(int idx) {
-        long aLong = buffer2().getLong(HEADER_SIZE + SLOT_CHILD_POINTER + (SLOT_SIZE * (idx - 1)) + SLOT_KEY_SIZE);
-        sanityCheck();
-        return aLong;
+        return buffer().getLong(HEADER_SIZE + SLOT_CHILD_POINTER + (SLOT_SIZE * (idx - 1)) + SLOT_KEY_SIZE);
     }
 
     @Override
@@ -124,22 +110,18 @@ public class InternalPage extends AbstractPage implements Page {
 
         if (availableSpace() < payloadSize + internalOverhead()) {
             // write info about page is full
-            byte pageMeta = buffer2().get(0);
-            sanityCheck();
+            byte pageMeta = buffer().get(0);
             pageMeta = (byte) (pageMeta | FULL_FLAG);
-            buffer2().put(0, pageMeta);
-            sanityCheck();
+            buffer().put(0, pageMeta);
             return false; // Not enough space
         }
 
         // Write key-value to payload area
         int dataStart = freeSpaceOffset - payloadSize;
         int kvOffset = dataStart;
-        buffer2().putShort(kvOffset, (short) key.length);
-        sanityCheck();
+        buffer().putShort(kvOffset, (short) key.length);
         kvOffset += PAYLOAD_SIZE_FIELD_SIZE;
-        buffer2().put(kvOffset, key);
-        sanityCheck();
+        buffer().put(kvOffset, key);
 
         // Write slot
         int idx = pageLoc.idx();
@@ -148,24 +130,16 @@ public class InternalPage extends AbstractPage implements Page {
             int start = HEADER_SIZE + SLOT_SIZE * idx;
             int end = slotOffset;
             byte[] tmp = new byte[end - start - SLOT_CHILD_POINTER];
-            buffer2().get(start + SLOT_CHILD_POINTER, tmp);
-            sanityCheck();
+            buffer().get(start + SLOT_CHILD_POINTER, tmp);
 
-            buffer2().putLong(start, left);
-            sanityCheck();
-            buffer2().putShort(start + SLOT_CHILD_POINTER, (short) dataStart);
-            sanityCheck();
-            buffer2().putLong(start + SLOT_CHILD_POINTER + SLOT_KEY_SIZE, right);
-            sanityCheck();
-            buffer2().put(start + SLOT_SIZE + SLOT_CHILD_POINTER, tmp);
-            sanityCheck();
+            buffer().putLong(start, left);
+            buffer().putShort(start + SLOT_CHILD_POINTER, (short) dataStart);
+            buffer().putLong(start + SLOT_CHILD_POINTER + SLOT_KEY_SIZE, right);
+            buffer().put(start + SLOT_SIZE + SLOT_CHILD_POINTER, tmp);
         } else {
-            buffer2().putLong(slotOffset - SLOT_CHILD_POINTER, left);
-            sanityCheck();
-            buffer2().putShort(slotOffset, (short) dataStart);
-            sanityCheck();
-            buffer2().putLong(slotOffset + SLOT_KEY_SIZE, right);
-            sanityCheck();
+            buffer().putLong(slotOffset - SLOT_CHILD_POINTER, left);
+            buffer().putShort(slotOffset, (short) dataStart);
+            buffer().putLong(slotOffset + SLOT_KEY_SIZE, right);
         }
 
         // Update header
@@ -189,27 +163,5 @@ public class InternalPage extends AbstractPage implements Page {
     @Override
     protected int internalOverhead() {
         return SLOT_SIZE + PAYLOAD_SIZE_FIELD_SIZE;
-    }
-
-    @Override
-    protected Exception sanityCheck() {
-        try {
-            int cnt = getEntryCount();
-            for (int i = 0; i < cnt; i++) {
-                long leftId = buffer(true).getLong(HEADER_SIZE + (SLOT_SIZE * i));
-                int keyOffset = buffer(true).getShort(HEADER_SIZE + (SLOT_SIZE * i) + SLOT_CHILD_POINTER);
-                long rightId = buffer(true).getLong(HEADER_SIZE + (SLOT_SIZE * i) + 2 + SLOT_KEY_SIZE);
-
-                short keyDataSize = buffer(true).getShort(keyOffset);
-                byte[] key = new byte[keyDataSize];
-                buffer(true).get(keyOffset + 2, key);
-                if (leftId < 0 || rightId < 0) {
-                    throw new IllegalStateException("Child pointers cannot be negative: left=" + leftId + ", right=" + rightId);
-                }
-            }
-            return null;
-        } catch (Exception e) {
-            return e;
-        }
     }
 }

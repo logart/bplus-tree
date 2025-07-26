@@ -66,8 +66,7 @@ public class LeafPageEdgeCaseTest {
 
         // Check if page metadata is marked full
         assertTrue(page.isAlmostFull(16));
-        byte meta = page.buffer2().get(0);
-        page.sanityCheck();
+        byte meta = page.buffer().get(0);
         assertTrue((meta & 0b0100_0000) != 0); // FULL_FLAG
 
         // Spot check 10 random entries
@@ -113,8 +112,7 @@ public class LeafPageEdgeCaseTest {
         int slotOffset = LeafPage.HEADER_SIZE + page.getEntryCount() * 2;
 
         // Corrupt slot manually to simulate a broken pointer
-        page.buffer2().putShort(LeafPage.HEADER_SIZE, (short) -1);  // invalid offset
-        page.sanityCheck();
+        page.buffer().putShort(LeafPage.HEADER_SIZE, (short) -1);  // invalid offset
 
         // Should not crash
         assertDoesNotThrow(() -> {

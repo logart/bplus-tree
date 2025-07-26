@@ -1,6 +1,7 @@
 package org.logart.node;
 
 import org.logart.page.Page;
+import org.logart.page.memory.InMemoryPage;
 
 import java.util.Arrays;
 import java.util.Comparator;
@@ -86,8 +87,7 @@ public class DefaultBTreeNode implements BTreeNode {
         return page;
     }
 
-    @Override
-    public long[] childrenDebugTODOREMOVE() {
-        return page.childrenDbugTODOREMOVE();
+    public long[] children() {
+        return ((InMemoryPage) page).children();
     }
 }

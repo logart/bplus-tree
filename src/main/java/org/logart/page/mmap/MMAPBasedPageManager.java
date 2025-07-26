@@ -130,8 +130,7 @@ public class MMAPBasedPageManager implements PageManager {
      */
     public void writePage(long pageId, Page page) {
         AbstractPage internalPage = (AbstractPage) page;
-        ByteBuffer buffer = internalPage.buffer2();
-        internalPage.sanityCheck();
+        ByteBuffer buffer = internalPage.buffer();
         if (buffer.position() != 0) {
             buffer.rewind();
         }

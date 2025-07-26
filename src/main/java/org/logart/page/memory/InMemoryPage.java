@@ -155,8 +155,7 @@ public class InMemoryPage implements Page {
         }
     }
 
-    @Override
-    public long[] childrenDbugTODOREMOVE() {
+    public long[] children() {
         return children;
     }
 

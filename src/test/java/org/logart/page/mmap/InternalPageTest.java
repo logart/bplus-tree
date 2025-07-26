@@ -169,7 +169,7 @@ public class InternalPageTest {
             int cnt = checkedPage.getEntryCount();
             for (int i = 0; i < cnt; i++) {
                 InternalPage internalPage = (InternalPage) checkedPage;
-                ByteBuffer buffer = internalPage.buffer2();
+                ByteBuffer buffer = internalPage.buffer();
                 long leftId = buffer.getLong(HEADER_SIZE + (SLOT_SIZE * i));
                 int keyOffset = buffer.getShort(HEADER_SIZE + (SLOT_SIZE * i) + SLOT_CHILD_POINTER);
                 long rightId = buffer.getLong(HEADER_SIZE + SLOT_CHILD_POINTER + (SLOT_SIZE * i) + SLOT_KEY_SIZE);
