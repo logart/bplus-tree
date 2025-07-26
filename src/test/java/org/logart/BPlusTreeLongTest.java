@@ -20,7 +20,6 @@ import java.util.concurrent.Executors;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
-@Disabled // only run it for final tests
 public class BPlusTreeLongTest {
     private BPlusTree tree;
     private Path tempFile;

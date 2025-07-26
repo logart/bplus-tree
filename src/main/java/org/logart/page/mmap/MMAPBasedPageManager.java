@@ -49,6 +49,20 @@ public class MMAPBasedPageManager implements PageManager {
     @Override
     public Page open() {
         long rootId = rootPointer.getLong(0);
+        // restore deleted pages
+        for (long page = 0; page < currentPageId.get(); page++) {
+            MappedByteBuffer pageMetaBuffer = null;
+            try {
+                pageMetaBuffer = channel.map(FileChannel.MapMode.READ_ONLY, page * pageSize + PAGE_POINTER_SIZE, 1);
+            } catch (IOException e) {
+                throw new UncheckedIOException("Could not get list of deleted pages", e);
+            }
+            pageMetaBuffer.load();
+            byte pageMeta = pageMetaBuffer.get(0);
+            if ((pageMeta & PageFactory.IS_DELETED) == PageFactory.IS_DELETED) {
+                freePagesIds.offer(page);
+            }
+        }
         return readPage(rootId);
     }
 

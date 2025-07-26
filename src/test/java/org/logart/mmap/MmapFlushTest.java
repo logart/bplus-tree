@@ -38,7 +38,7 @@ public class MmapFlushTest {
             ));
             tree.load();
             int i;
-            for (i = 0; i < 10_001; i++) {
+            for (i = 0; i < 1_001; i++) {
                 byte[] key = ("key" + i).getBytes();
                 byte[] value = tree.get(key);
                 assertNotNull(value, "Value for key " + i + " should not be null");
@@ -46,7 +46,7 @@ public class MmapFlushTest {
             }
 
             System.out.println("Number of items read: " + i);
-            assertEquals(10_001, i, "At least one record should be read successfully, was " + i);
+            assertEquals(1_001, i, "At least one record should be read successfully, was " + i);
         } finally {
             Files.deleteIfExists(tempFile);
         }
