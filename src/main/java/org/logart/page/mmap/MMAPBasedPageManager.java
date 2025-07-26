@@ -100,6 +100,7 @@ public class MMAPBasedPageManager implements PageManager {
         MappedByteBuffer buffer;
         try {
             buffer = channel.map(FileChannel.MapMode.READ_WRITE, pageId * pageSize + PAGE_POINTER_SIZE, pageSize);
+            buffer.load();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -114,7 +115,6 @@ public class MMAPBasedPageManager implements PageManager {
      * Writes a full page from a ByteBuffer.
      */
     public void writePage(long pageId, Page page) {
-        // todo maybe we could just do force() on underlying mmap buffer
         AbstractPage internalPage = (AbstractPage) page;
         ByteBuffer buffer = internalPage.buffer2();
         internalPage.sanityCheck();
@@ -150,6 +150,7 @@ public class MMAPBasedPageManager implements PageManager {
 
     public void close() {
         try {
+            channel.force(true);
             channel.close();
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to close channel", e);
