@@ -9,15 +9,11 @@ public class LeafPage extends AbstractPage implements Page {
     protected static final int SLOT_SIZE = 2;               // each slot is a 2-byte pointer to payload
     public static final int PAYLOAD_SIZE_FIELD_SIZE = 2;
 
-    public LeafPage(ByteBuffer buffer, boolean sanityCheckEnabled) {
-        super(buffer, sanityCheckEnabled);
+    public LeafPage(ByteBuffer buffer) {
+        super(buffer);
     }
 
     public static Page newPage(long pageId, ByteBuffer buf) {
-        return newPage(pageId, buf, true);
-    }
-
-    public static Page newPage(long pageId, ByteBuffer buf, boolean sanityCheckEnabled) {
         /**
          * Slot table:          2 bytes per entry
          * Free space:          variable size
@@ -27,11 +23,11 @@ public class LeafPage extends AbstractPage implements Page {
         buf.putLong(PAGE_ID_OFFSET, pageId);
         buf.putShort(ENTRY_COUNT_OFFSET, (short) 0);
         buf.putShort(FREE_SPACE_OFFSET, (short) PAGE_SIZE);
-        return new LeafPage(buf, sanityCheckEnabled);
+        return new LeafPage(buf);
     }
 
-    public static Page readPage(ByteBuffer buffer, boolean sanityCheckEnabled) {
-        return new LeafPage(buffer, sanityCheckEnabled);
+    public static Page readPage(ByteBuffer buffer) {
+        return new LeafPage(buffer);
     }
 
     public boolean put(byte[] key, byte[] value) {

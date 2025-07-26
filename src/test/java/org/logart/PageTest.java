@@ -30,13 +30,13 @@ public class PageTest {
 
     @Test
     void shouldReadLeafFlag() throws Exception {
-        assertTrue(LeafPage.newPage(0, ByteBuffer.allocate(PAGE_SIZE), true).isLeaf());
-        assertFalse(InternalPage.newPage(0, ByteBuffer.allocate(PAGE_SIZE), true).isLeaf());
+        assertTrue(LeafPage.newPage(0, ByteBuffer.allocate(PAGE_SIZE)).isLeaf());
+        assertFalse(InternalPage.newPage(0, ByteBuffer.allocate(PAGE_SIZE)).isLeaf());
     }
 
     @Test
     void shouldMarkPageAsFull() throws Exception {
-        Page page = LeafPage.newPage(0, ByteBuffer.allocate(PAGE_SIZE), true);
+        Page page = LeafPage.newPage(0, ByteBuffer.allocate(PAGE_SIZE));
         while (page.put("key".getBytes(), "value".getBytes())) {
             // Fill the page
         }

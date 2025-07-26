@@ -34,7 +34,7 @@ public class MmapFlushTest {
             p.waitFor();
 
             DefaultBPlusTree tree = new DefaultBPlusTree(new DefaultNodeManager(
-                    new MMAPBasedPageManager(tempFile.toFile(), 4096, false)
+                    new MMAPBasedPageManager(tempFile.toFile(), 4096)
             ));
             tree.load();
             int i;

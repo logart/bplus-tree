@@ -20,7 +20,7 @@ public class LeafPageTest {
     @BeforeEach
     void setUp() {
         buffer = ByteBuffer.allocate(PAGE_SIZE);
-        page = (LeafPage) LeafPage.newPage(1L, buffer, true);
+        page = (LeafPage) LeafPage.newPage(1L, buffer);
     }
 
     @Test

@@ -38,11 +38,9 @@ public abstract class AbstractPage implements Page {
     public static final int FULL_FLAG = 0b0100_0000;
 
     private final ByteBuffer buffer;
-    private final boolean sanityCheckEnabled;
 
-    public AbstractPage(ByteBuffer buffer, boolean sanityCheckEnabled) {
+    public AbstractPage(ByteBuffer buffer) {
         this.buffer = buffer.order(ByteOrder.BIG_ENDIAN);
-        this.sanityCheckEnabled = sanityCheckEnabled;
     }
 
     @Override

@@ -73,7 +73,7 @@ public class BPlusTreeTest {
     void testInsertEmptyKeyAndValue() throws Exception {
         byte[] key = new byte[0];
         byte[] value = new byte[0];
-        tree = new DefaultBPlusTree(new DefaultNodeManager(new MMAPBasedPageManager(tempFile.toFile(), 4096, false))); // assuming 4KB pages
+        tree = new DefaultBPlusTree(new DefaultNodeManager(new MMAPBasedPageManager(tempFile.toFile(), 4096))); // assuming 4KB pages
         tree.put(key, value);
         assertArrayEquals(value, tree.get(key));
     }
@@ -107,7 +107,7 @@ public class BPlusTreeTest {
         byte[] value = new byte[2048];  // 2KB value
         new Random().nextBytes(key);
         new Random().nextBytes(value);
-        tree = new DefaultBPlusTree(new DefaultNodeManager(new MMAPBasedPageManager(tempFile.toFile(), 4096, false))); // assuming 4KB pages
+        tree = new DefaultBPlusTree(new DefaultNodeManager(new MMAPBasedPageManager(tempFile.toFile(), 4096))); // assuming 4KB pages
         tree.put(key, value);
         assertArrayEquals(value, tree.get(key));
     }

@@ -26,14 +26,9 @@ public class MMAPBasedPageManager implements PageManager {
     private final Set<Long> pages = ConcurrentHashMap.newKeySet();
     private final Queue<Long> freePagesIds = new ConcurrentLinkedUniqueQueue<>();
     private final AtomicLong currentPageId;
-    private final boolean sanityCheckEnabled;
     private final MappedByteBuffer rootPointer;
 
     public MMAPBasedPageManager(File file, int pageSize) throws IOException {
-        this(file, pageSize, true);
-    }
-
-    public MMAPBasedPageManager(File file, int pageSize, boolean sanityCheckEnabled) throws IOException {
         this.pageSize = pageSize;
         this.channel = FileChannel.open(
                 file.toPath(),
@@ -43,7 +38,6 @@ public class MMAPBasedPageManager implements PageManager {
         );
         this.rootPointer = channel.map(FileChannel.MapMode.READ_WRITE, 0, PAGE_POINTER_SIZE);
         this.currentPageId = new AtomicLong(channel.size() / pageSize);
-        this.sanityCheckEnabled = sanityCheckEnabled;
     }
 
     @Override
@@ -80,7 +74,7 @@ public class MMAPBasedPageManager implements PageManager {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        Page page = InternalPage.newPage(pageId, emptyPage, sanityCheckEnabled);
+        Page page = InternalPage.newPage(pageId, emptyPage);
         pages.add(pageId);
         writePage(pageId, page);
         return page;
@@ -101,7 +95,7 @@ public class MMAPBasedPageManager implements PageManager {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        Page page = LeafPage.newPage(pageId, emptyPage, sanityCheckEnabled);
+        Page page = LeafPage.newPage(pageId, emptyPage);
         pages.add(pageId);
         writePage(pageId, page);
         return page;
@@ -118,7 +112,7 @@ public class MMAPBasedPageManager implements PageManager {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        Page read = PageFactory.read(buffer, sanityCheckEnabled);
+        Page read = PageFactory.read(buffer);
         if (read.isDeleted()) {
             throw new IllegalStateException("Page with id " + pageId + " is deleted and cannot be read.");
         }

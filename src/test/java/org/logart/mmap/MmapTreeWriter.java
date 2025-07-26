@@ -11,7 +11,7 @@ public class MmapTreeWriter {
     public static void main(String[] args) throws Exception {
         Path path = Paths.get(args[0]);
         DefaultBPlusTree tree = new DefaultBPlusTree(new DefaultNodeManager(
-                new MMAPBasedPageManager(path.toFile(), 4096, false)
+                new MMAPBasedPageManager(path.toFile(), 4096)
         ));
         for (int i = 0; i < 1_001; i++) {
             byte[] key = ("key" + i).getBytes();

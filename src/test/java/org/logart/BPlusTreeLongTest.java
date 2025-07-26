@@ -24,7 +24,7 @@ public class BPlusTreeLongTest {
     @BeforeEach
     void setup() throws Exception {
         tempFile = Files.createTempFile("bplustree-test", ".db");
-        tree = new DefaultBPlusTree(new DefaultNodeManager(new MMAPBasedPageManager(tempFile.toFile(), 4096, false))); // assuming 4KB pages
+        tree = new DefaultBPlusTree(new DefaultNodeManager(new MMAPBasedPageManager(tempFile.toFile(), 4096))); // assuming 4KB pages
     }
 
     @AfterEach

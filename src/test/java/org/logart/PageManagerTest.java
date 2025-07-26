@@ -56,7 +56,7 @@ public class PageManagerTest {
     void testConcurrentReadWriteDistinctPages() throws Exception {
         int threadCount = 8;
         int pagesPerThread = 50;
-        pageManager = new MMAPBasedPageManager(tempFile, PAGE_SIZE, false);
+        pageManager = new MMAPBasedPageManager(tempFile, PAGE_SIZE);
         // pre allocate pages
         for (int i = 0; i < threadCount * pagesPerThread; i++) {
             pageManager.allocateLeafPage();
@@ -145,7 +145,7 @@ public class PageManagerTest {
 
     @Test
     void testStressConcurrentAllocWriteRead() throws Exception {
-        pageManager = new MMAPBasedPageManager(tempFile, PAGE_SIZE, false);
+        pageManager = new MMAPBasedPageManager(tempFile, PAGE_SIZE);
 
         int threadCount = 20;
         int iterations = 100;

@@ -17,6 +17,8 @@ Pages are organized in a compact binary layout optimized for:
 Cons:
 - Right sibling pointers in leaf pages are not implemented (needed for efficient range scans).
 - Slot table grows from the end of the file. However, this is a common practice, this could slow down reads and cause issue with cache invalidation. This is fixed by manually loading buffer after pageRead. If system meory would be enough, this should work relatively fast.
+- Space left after update in not reused, the page only gets smaller on split. This could be fixed by adding additional data structure which will track free "slots" on the page and reuse those on insert if the payload is smaller. But in general, fragmentation could not be avoided and page should be reorganized on split.
+- Keys are copied one by one when page split, I feel like this could be done more efficiently.
 
 Page structure is optimized for modern chips cache which is usually 64 bytes.
 False sharing risk avoided, page is read only so no parallel thread could modify and read it.

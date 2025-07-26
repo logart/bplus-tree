@@ -9,8 +9,8 @@ public class InternalPage extends AbstractPage implements Page {
     protected static final int SLOT_SIZE = 2 + SLOT_CHILD_POINTER; // each slot is a 2-byte pointer to payload + 8-byte child pointer
     public static final int PAYLOAD_SIZE_FIELD_SIZE = 2;
 
-    public InternalPage(ByteBuffer buffer, boolean sanityCheckEnabled) {
-        super(buffer, sanityCheckEnabled);
+    public InternalPage(ByteBuffer buffer) {
+        super(buffer);
     }
 
     public static Page newPage(long pageId, ByteBuffer buf) {
@@ -27,11 +27,11 @@ public class InternalPage extends AbstractPage implements Page {
         buf.putLong(PAGE_ID_OFFSET, pageId);
         buf.putShort(ENTRY_COUNT_OFFSET, (short) 0);
         buf.putShort(FREE_SPACE_OFFSET, (short) PAGE_SIZE);
-        return new InternalPage(buf, sanityCheckEnabled);
+        return new InternalPage(buf);
     }
 
-    public static Page readPage(ByteBuffer buffer, boolean sanityCheckEnabled) {
-        return new InternalPage(buffer, sanityCheckEnabled);
+    public static Page readPage(ByteBuffer buffer) {
+        return new InternalPage(buffer);
     }
 
     @Override
