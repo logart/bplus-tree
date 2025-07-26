@@ -59,13 +59,15 @@ public class DefaultBPlusTree implements BPlusTree {
         boolean rootUpdated = false;
         PutResult put = null;
         Versioned<BTreeNode> currentVersionedRoot = null;
-        while (!rootUpdated) {
-            currentVersionedRoot = nodeManager.lockVersion();
-            try {
-                put = putHandler.put(currentVersionedRoot.get(), key, value, currentVersionedRoot.version());
-                rootUpdated = nodeManager.advanceVersion(currentVersionedRoot, put.nodeCopy());
-            } finally {
-                nodeManager.releaseVersion(currentVersionedRoot);
+        synchronized (this) {
+            while (!rootUpdated) {
+                currentVersionedRoot = nodeManager.lockVersion();
+                try {
+                    put = putHandler.put(currentVersionedRoot.get(), key, value, currentVersionedRoot.version());
+                    rootUpdated = nodeManager.advanceVersion(currentVersionedRoot, put.nodeCopy());
+                } finally {
+                    nodeManager.releaseVersion(currentVersionedRoot);
+                }
             }
         }
         // write, free node and return
@@ -96,7 +98,7 @@ public class DefaultBPlusTree implements BPlusTree {
         visited.add(node.id());
 
         if (!node.isLeaf()) {
-            for (long childId : ((DefaultBTreeNode)node).children()) {
+            for (long childId : ((DefaultBTreeNode) node).children()) {
                 if (childId != -1) {
                     BTreeNode child = nodeManager.readNode(childId);
                     if (child == null) {

@@ -56,7 +56,7 @@ public class BPlusTreeLongTest {
             for (int t = 0; t < 16; t++) {
                 executor.submit(() -> {
                     try {
-                        for (int i = 0; i < 1_00; i++) {
+                        for (int i = 0; i < 10_000; i++) {
                             String key = ("key-" + i);
                             String value = ("value-" + i);
                             tree.put(key.getBytes(), value.getBytes());
@@ -81,7 +81,7 @@ public class BPlusTreeLongTest {
                 System.out.println("Errors occurred during concurrent writes: " + errors.poll());
             }
             upper:
-            for (int i = 0; i < 1_00; i++) {
+            for (int i = 0; i < 10_000; i++) {
                 String key = ("key-" + i);
                 List<String> potentialValues = reference.get(key);
                 if (potentialValues == null || potentialValues.isEmpty()) {
@@ -107,7 +107,7 @@ public class BPlusTreeLongTest {
             for (int t = 0; t < 16; t++) {
                 executor.submit(() -> {
                     try {
-                        for (int i = 0; i < 1_00; i++) {
+                        for (int i = 0; i < 10_000; i++) {
                             String key = "key-" + Math.random() * 1_000_000_000;
                             String value = ("value-" + i);
                             tree.put(key.getBytes(), value.getBytes());
